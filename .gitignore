@@ -1,17 +1,48 @@
 # Environment / secrets
 .env
+.env.local
+.env.*.local
 
-# Logs & backups
+# PHP & Framework
+vendor/
+node_modules/
+composer.lock
+package-lock.json
+composer.phar
+
+# PHP specific
+*.su
+*.log
+*.lock
+
+# Database
+*.sql.gz
+
+# XAMPP / Windows
+generated-config.php
+httpd.conf
+php.ini
+
+# Logs
 storage/logs/*
 storage/backups/*
 !storage/logs/.gitkeep
 !storage/backups/.gitkeep
 
-# OS / editor
+# Editor/IDE settings
+.idea/
+.vscode/
+*.ktplugin
+
+# OS
 .DS_Store
 Thumbs.db
 *.swp
+*~
 
-# Dependencies
-vendor/
-node_modules/
+# ELMS specific
+assets/uploads/*
+!assets/.gitkeep
+
+# Third party services
+# Add any third party service config files here
