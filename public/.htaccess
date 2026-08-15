@@ -1,7 +1,9 @@
 # ELMS front-controller rewrite (public/)
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /license/public/
+    # No RewriteBase: per-directory .htaccess resolves the relative
+    # target against the directory it lives in, so this works whether
+    # the app is served from /public/ or /license/public/.
 
     # Serve existing files/directories directly (assets).
     RewriteCond %{REQUEST_FILENAME} -f [OR]
