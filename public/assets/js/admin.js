@@ -8,6 +8,45 @@
 (function () {
     'use strict';
 
+    /* Mobile sidebar drawer */
+    const sidebar = document.getElementById('elmsSidebar');
+    const backdrop = document.getElementById('elmsBackdrop');
+    const toggle  = document.getElementById('elmsSidebarToggle');
+
+    function openSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.add('show');
+        if (backdrop) backdrop.classList.add('show');
+    }
+    function closeSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.remove('show');
+        if (backdrop) backdrop.classList.remove('show');
+    }
+    if (toggle) {
+        toggle.addEventListener('click', function () {
+            if (sidebar && sidebar.classList.contains('show')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
+    }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSidebar();
+    });
+    // Close drawer after picking a destination on small screens.
+    if (sidebar) {
+        sidebar.addEventListener('click', function (e) {
+            if (e.target.closest('.nav-link') && window.matchMedia('(max-width: 991.98px)').matches) {
+                closeSidebar();
+            }
+        });
+    }
+
     const BASE = window.ELMS_BASE || '/license/public';
 
     function csrf() {
