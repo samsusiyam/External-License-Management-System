@@ -35,7 +35,11 @@ abstract class ApiController
 
         $this->logRequest($request, $payload, $status, $ok);
 
-        Response::json($payload, $status);
+        $key    = ApiAuthMiddleware::currentKey();
+        $secret = $key !== null ? (string) $key['secret_key'] : '';
+        $apiKey = $key !== null ? (string) $key['api_key'] : '';
+
+        Response::jsonSigned($payload, $secret, $apiKey, $status);
     }
 
     /**

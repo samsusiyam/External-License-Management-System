@@ -8,7 +8,7 @@
 (function () {
     'use strict';
 
-    const BASE = '/license/public';
+    const BASE = window.ELMS_BASE || '/license/public';
 
     function csrf() {
         return window.ELMS_CSRF || '';

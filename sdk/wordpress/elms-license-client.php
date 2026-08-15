@@ -24,6 +24,49 @@ class ELMS_License_Client
         add_action('admin_menu', [self::class, 'menu']);
         add_action('admin_init', [self::class, 'registerSettings']);
         add_action('admin_notices', [self::class, 'notice']);
+
+        // Encrypt the API secret at rest in wp_options.
+        add_filter('pre_update_option_elms_api_secret', [self::class, 'encryptSecret']);
+        add_filter('option_elms_api_secret', [self::class, 'decryptSecret']);
+    }
+
+    /**
+     * Encrypt the stored API secret so it is not plaintext in the database.
+     */
+    public static function encryptSecret(string $value): string
+    {
+        if ($value === '' || !function_exists('openssl_encrypt')) {
+            return $value;
+        }
+        $iv = openssl_random_pseudo_bytes(16);
+        $enc = openssl_encrypt($value, 'AES-256-CBC', self::cipherKey(), 0, $iv);
+        if ($enc === false) {
+            return $value;
+        }
+        return 'elmsenc::' . base64_encode($iv) . '::' . $enc;
+    }
+
+    /**
+     * Decrypt the stored API secret on read.
+     */
+    public static function decryptSecret(string $value): string
+    {
+        if (str_starts_with($value, 'elmsenc::')) {
+            $parts = explode('::', substr($value, 9), 2);
+            if (count($parts) === 2) {
+                $iv = base64_decode($parts[0]);
+                $dec = openssl_decrypt($parts[1], 'AES-256-CBC', self::cipherKey(), 0, $iv);
+                return $dec === false ? '' : $dec;
+            }
+        }
+        return $value;
+    }
+
+    private static function cipherKey(): string
+    {
+        $a = defined('AUTH_KEY') ? AUTH_KEY : 'elms';
+        $b = defined('SECURE_AUTH_KEY') ? SECURE_AUTH_KEY : 'wp';
+        return hash('sha256', $a . $b);
     }
 
     private static function sdk(): ElmsLicense
@@ -43,8 +86,17 @@ class ELMS_License_Client
         if ($key === '') {
             return false;
         }
-        $res = self::sdk()->verify($key, wp_parse_url(home_url(), PHP_URL_HOST));
-        return !empty($res['status']);
+        // Cache the verification result briefly to avoid a live HTTP call on
+        // every admin page load.
+        $cacheKey = 'elms_valid_' . md5($key);
+        $cached = get_transient($cacheKey);
+        if ($cached !== false) {
+            return (bool) $cached;
+        }
+        $res   = self::sdk()->verify($key, wp_parse_url(home_url(), PHP_URL_HOST));
+        $valid = !empty($res['status']);
+        set_transient($cacheKey, $valid ? 1 : 0, 10 * MINUTE_IN_SECONDS);
+        return $valid;
     }
 
     public static function menu(): void

@@ -41,6 +41,13 @@ if (!is_dir($backupDir)) {
     mkdir($backupDir, 0775, true);
 }
 
+// Block web access to dumps (Apache/.htaccess and OpenLiteSpeed).
+$htaccess = $backupDir . '/.htaccess';
+if (!is_file($htaccess)) {
+    file_put_contents($htaccess, "Require all denied\nDeny from all\n");
+    @chmod($htaccess, 0644);
+}
+
 $stamp = date('Y-m-d_His');
 $outFile = $backupDir . "/elms_{$name}_{$stamp}.sql";
 
@@ -89,6 +96,8 @@ if ($code !== 0 || $data === false || str_contains((string) $data, 'Got error'))
 }
 
 file_put_contents($outFile, $data);
+// Restrict dump file permissions so it is not world-readable.
+@chmod($outFile, 0600);
 $size = round(filesize($outFile) / 1024, 1);
 echo "[ok] Backup written ({$size} KB).\n";
 

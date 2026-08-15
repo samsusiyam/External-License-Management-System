@@ -55,17 +55,31 @@ class ElmsApiClient
         $sig  = hash_hmac('sha256', $ts . '.' . $this->apiKey . '.' . hash('sha256', $body), $this->apiSecret);
 
         $ch = curl_init($this->baseUrl . $path);
+        $respHeaders = [];
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 15,
+            CURLOPT_SSL_VERIFYPEER  => true,
+            CURLOPT_SSL_VERIFYHOST  => 2,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'X-Api-Key: ' . $this->apiKey,
                 'X-Timestamp: ' . $ts,
                 'X-Signature: ' . $sig,
             ],
+            CURLOPT_HEADERFUNCTION => function ($ch, string $line) use (&$respHeaders) {
+                $raw = $line;
+                $line = trim($line);
+                if ($line !== '' && !str_starts_with($line, 'HTTP/')) {
+                    $parts = explode(':', $line, 2);
+                    if (count($parts) === 2) {
+                        $respHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+                    }
+                }
+                return strlen($raw);
+            },
         ]);
         $resp = curl_exec($ch);
         $err  = curl_error($ch);
@@ -74,6 +88,18 @@ class ElmsApiClient
         if ($resp === false) {
             return ['status' => false, 'message' => 'Connection error: ' . $err];
         }
+
+        // Verify the server's response signature to reject MITM forgeries.
+        $rTs  = $respHeaders['x-timestamp'] ?? null;
+        $rSig = $respHeaders['x-signature'] ?? null;
+        if ($rTs === null || $rSig === null || !ctype_digit($rTs) || abs(time() - (int) $rTs) > 300) {
+            return ['status' => false, 'message' => 'Untrusted server response (no/invalid signature)'];
+        }
+        $expected = hash_hmac('sha256', $rTs . '.' . $this->apiKey . '.' . hash('sha256', $resp), $this->apiSecret);
+        if (!hash_equals($expected, $rSig)) {
+            return ['status' => false, 'message' => 'Untrusted server response (bad signature)'];
+        }
+
         $decoded = json_decode($resp, true);
         return is_array($decoded) ? $decoded : ['status' => false, 'message' => 'Invalid response'];
     }
