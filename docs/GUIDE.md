@@ -1,74 +1,83 @@
-# ELMS Documentation (গাইডলাইন)
+# ELMS Documentation (Guideline)
 
-**External License Management System (ELMS)** — কেন্দ্রীয় লাইসেন্স ম্যানেজমেন্ট প্ল্যাটফর্ম। এই ডকুমেন্টেশনে থাকছে:
+**External License Management System (ELMS)** — a centralized license management
+platform. This documentation contains:
 
-1. লাইভ API URL গুলো
-2. API কিভাবে কল করবেন (authentication + signature)
-3. ELMS সার্ভার নিজে হোস্ট করার স্টেপ
-4. WHMCS / WordPress / PHP / Laravel-এ কিভাবে ইন্সটল করবেন
+1. Live API URLs
+2. How to call the API (authentication + signature)
+3. Steps to self-host the ELMS server
+4. How to install it as a module for WHMCS / WordPress / PHP / Laravel
 
 ---
 
-## ১. লাইভ API URL
+## 1. Live API URL
 
-| পরিবেশ | বেস URL |
-|--------|---------|
-| **Production (লাইভ)** | `https://lic.hostnibo.com` |
+| Environment | Base URL |
+|-------------|----------|
+| **Production (live)** | `https://lic.hostnibo.com` |
 | Admin Panel | `https://lic.hostnibo.com/admin` |
 | API Base | `https://lic.hostnibo.com/api` |
 | Health Check | `https://lic.hostnibo.com/health` |
 
-> নিচের সব API endpoint-এর আগে `https://lic.hostnibo.com` বসবে। যেমন verify করতে: `https://lic.hostnibo.com/api/license/verify`
+> All API endpoints below are prefixed with `https://lic.hostnibo.com`. For
+> example, to verify: `https://lic.hostnibo.com/api/license/verify`
 
 ---
 
-## ২. API Authentication
+## 2. API Authentication
 
-সব `/api/*` endpoint **POST** method এবং নিচের ৩টি header ছাড়া কাজ করবে না:
+Every `/api/*` endpoint is a **POST** and requires these 3 headers, otherwise
+it will not work:
 
-| Header | মান |
-|--------|-----|
-| `X-Api-Key` | আপনার public API key (যেমন `elms_pk_xxx`) |
-| `X-Timestamp` | বর্তমান unix time (সেকেন্ড); সার্ভারের সাথে ±300s (৫ মিনিট) এর মধ্যে হতে হবে |
-| `X-Signature` | নিচের নিয়মে তৈরি HMAC-SHA256 সিগনেচার |
+| Header | Value |
+|--------|-------|
+| `X-Api-Key` | Your public API key (e.g. `elms_pk_xxx`) |
+| `X-Timestamp` | Current unix time (seconds); must be within ±300s (5 minutes) of the server |
+| `X-Signature` | HMAC-SHA256 signature built using the rule below |
 
-**Signature তৈরির নিয়ম:**
+**How the signature is built:**
 
 ```
 base_string = {timestamp} + "." + {api_key} + "." + sha256({raw_json_body})
 signature   = HMAC_SHA256(base_string, {api_secret})
 ```
 
-সহজ কথায়: আপনার JSON body-এর sha256 নিন, সেটাকে `timestamp.api_key.sha256body` ফরম্যাটে জোড়া দিয়ে secret দিয়ে HMAC করুন।
+In plain words: take the sha256 of your JSON body, join it as
+`timestamp.api_key.sha256body`, then HMAC it with your secret.
 
-**Response Signature:** সার্ভারও রেস্পন্সে `X-Signature` + `X-Timestamp` হেডার পাঠায়। ক্লায়েন্ট (SDK) এটা ভেরিফাই করে — তাই MITM attack-এ ভুয়া "valid" রেস্পন্স বানানো যায় না। সব রেডি SDK-এ এই চেক বিল্ট-ইন আছে।
+**Response Signature:** the server also returns `X-Signature` + `X-Timestamp`
+headers on the response. The client (SDK) verifies them — so a MITM attack
+cannot forge a fake "valid" response. All ready-made SDKs have this check
+built in.
 
 ---
 
-## ৩. API Endpoints
+## 3. API Endpoints
 
-সব endpoint POST। Request body = JSON। Response envelope:
+All endpoints are POST. Request body = JSON. Response envelope:
 
 ```json
 { "status": true, "message": "License Valid", "data": { } }
 ```
 
-| Endpoint | কাজ |
-|----------|-----|
-| `/api/license/create` | নতুন লাইসেন্স জেনারেট (প্যারাম: `product_id`, `customer_name`, `customer_email`, `activation_limit`, `expiry_date`) |
-| `/api/license/verify` | লাইসেন্স চেক (প্যারাম: `license_key`, `domain`, `ip`, `product`) |
-| `/api/license/activate` | অ্যাক্টিভেশন রেজিস্টার (প্যারাম: `license_key`, `domain`, `ip`, `product`, `server_hostname`, `install_path`) |
-| `/api/license/deactivate` | অ্যাক্টিভেশন ফ্রি করুন |
-| `/api/license/renew` | এক্সপায়ারি বাড়ান (`expiry_date`) |
-| `/api/license/reset` | ডোমেইন/IP/অ্যাক্টিভেশন বাইন্ডিং ক্লিয়ার |
-| `/api/license/suspend` | স্ট্যাটাস = suspended |
-| `/api/license/unsuspend` | স্ট্যাটাস = active |
-| `/api/license/terminate` | স্ট্যাটাস = terminated |
-| `/api/updates/check` | লেটেস্ট ভার্সন + ডাউনলোড URL (`product`, `current_version`, `license_key`) |
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/license/create` | Generate a license (params: `product_id`, `customer_name`, `customer_email`, `activation_limit`, `expiry_date`) |
+| `/api/license/verify` | Check a license (params: `license_key`, `domain`, `ip`, `product`) |
+| `/api/license/activate` | Register an activation (params: `license_key`, `domain`, `ip`, `product`, `server_hostname`, `install_path`) |
+| `/api/license/deactivate` | Free an activation slot |
+| `/api/license/renew` | Extend expiry (`expiry_date`) |
+| `/api/license/reset` | Clear domain/IP/activation bindings |
+| `/api/license/suspend` | Set status = suspended |
+| `/api/license/unsuspend` | Set status = active |
+| `/api/license/terminate` | Set status = terminated |
+| `/api/updates/check` | Latest version + download URL (`product`, `current_version`, `license_key`) |
 
-**Verify চেকের অর্ডার:** লাইসেন্স আছে? → প্রোডাক্ট মিলছে? → suspend/terminate নয়? → এক্সপায়ার হয়নি? → ডোমেইন লক → IP লক। Activate করলে অ্যাক্টিভেশন লিমিটও চেক হয়।
+**Verify checks (in order):** license exists? → product matches? → not
+suspended/terminated? → not expired? → domain lock → IP lock. Activate also
+enforces the activation limit.
 
-### curl দিয়ে উদাহরণ (verify)
+### curl example (verify)
 
 ```bash
 API_KEY="elms_pk_xxx"
@@ -86,102 +95,112 @@ curl -X POST https://lic.hostnibo.com/api/license/verify \
   -d "$BODY"
 ```
 
-**API Key কোথায় পাবেন:** Admin Panel → `API Keys` → নতুন key বানিয়ে `api_key` ও `secret_key` কপি করুন।
+**Where to get the API key:** Admin Panel → `API Keys` → create a new key and
+copy the `api_key` and `secret_key`.
 
 ---
 
-## ৪. ELMS সার্ভার ইন্সটল (নিজে হোস্ট করলে)
+## 4. Install the ELMS server (self-host)
 
-প্রয়োজন: **PHP 8.1+** (৮.২ রিকমেন্ডেড), **MySQL/MariaDB**, **Apache** (mod_rewrite) বা PHP built-in server।
+Requirements: **PHP 8.1+** (8.2 recommended), **MySQL/MariaDB**, **Apache**
+(mod_rewrite) or the PHP built-in server.
 
-1. **রেপো ক্লোন / ফাইল আপলোড:**
+1. **Clone the repo / upload files:**
    ```bash
    git clone <repo> license
    cd license
    ```
 
-2. **.env তৈরি করুন:**
+2. **Create the .env file:**
    ```bash
    cp .env.example .env
    ```
-   এডিট করে সেট করুন: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `APP_URL` (আপনার ডোমেইন), আর একটি লম্বা র্যান্ডম `APP_KEY`।
+   Edit it and set: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `APP_URL`
+   (your domain), and a long random `APP_KEY`.
 
-3. **ইন্সটলার চালান** (ডাটাবেস বানায়, স্কিমা লোড করে, admin + API key সিড করে):
+3. **Run the installer** (creates the database, loads the schema, seeds the
+   admin user + API key):
    ```bash
    php scripts/install.php --fresh --admin-user=admin --admin-pass="ChangeMe123"
    ```
-   আউটপুটে admin password + API key/secret দেখাবে — সেগুলো সেভ করুন।
+   The output prints the admin password + API key/secret — save them.
 
-4. **ওয়েব রুট `public/` দিকে পয়েন্ট করুন।** Apache-এ ডকুমেন্ট রুট `public/` হতে হবে (সাব-ডিরেক্টরিতেও অ্যাপ নিজে base path ডিটেক্ট করে নেয়)।
+4. **Point the web root at `public/`.** In Apache the document root must be
+   `public/` (the app auto-detects its base path even in a subdirectory).
 
-5. **লোকাল ডেভ সার্ভার:**
+5. **Local dev server:**
    ```bash
    php -S 127.0.0.1:8080 -t public
    ```
-   তারপর `http://127.0.0.1:8080/admin`।
+   Then open `http://127.0.0.1:8080/admin`.
 
-> **Security:** সিড করা admin password সাথে সাথে বদলান, `.env` পাবলিক না রাখুন, প্রোডাকশনে HTTPS ব্যবহার করুন।
+> **Security:** change the seeded admin password immediately, do not expose
+> `.env` publicly, and use HTTPS in production.
 
 ---
 
-## ৫. WHMCS Module ইন্সটল
+## 5. Install the WHMCS module
 
-ফোল্ডার: `whmcs/modules/addons/external_license_manager/`
+Folder: `whmcs/modules/addons/external_license_manager/`
 
-1. ফোল্ডারটি কপি করুন:
+1. Copy the folder:
    ```
    whmcs/modules/addons/external_license_manager/
    ```
-   → আপনার WHMCS-এর `modules/addons/external_license_manager/` দিকে।
+   → into your WHMCS `modules/addons/external_license_manager/`.
 
-2. WHMCS admin-এ যান: **Setup → Addon Modules** → "External License Manager" → **Activate**।
+2. In WHMCS admin go to: **Setup → Addon Modules** → "External License
+   Manager" → **Activate**.
 
-3. মডিউল কনফিগার করুন:
+3. Configure the module:
    - **License Server URL** = `https://lic.hostnibo.com`
-   - **API Key** = ELMS থেকে নেওয়া `api_key`
-   - **API Secret** = ELMS থেকে নেওয়া `secret_key`
-   - **Default ELMS Product ID** = ELMS-এ বানানো প্রোডাক্টের ID
+   - **API Key** = the `api_key` from ELMS
+   - **API Secret** = the `secret_key` from ELMS
+   - **Default ELMS Product ID** = the ID of the product created in ELMS
 
-4. **Lifecycle hooks (অটোমেটিক):**
-   - `AfterModuleCreate` → লাইসেন্স তৈরি
+4. **Lifecycle hooks (automatic):**
+   - `AfterModuleCreate` → create license
    - `AfterModuleSuspend` → suspend
    - `AfterModuleUnsuspend` → unsuspend
    - `AfterModuleTerminate` → terminate
 
-মডিউলটি HMAC সিগনেচার + রেস্পন্স সিগনেচার ভেরিফিকেশন বিল্ট-ইন নিয়ে আসে, তাই আলাদা কনফিগ লাগে না।
+The module ships with HMAC request signing + response signature verification
+built in, so no extra configuration is needed.
 
 ---
 
-## ৬. WordPress Plugin ইন্সটল
+## 6. Install the WordPress plugin
 
-ফোল্ডার: `sdk/wordpress/`
+Folder: `sdk/wordpress/`
 
-1. ফোল্ডারটি কপি করুন `sdk/wordpress/` → `wp-content/plugins/elms-license-client/`।
+1. Copy the folder `sdk/wordpress/` → `wp-content/plugins/elms-license-client/`.
 
-2. WP admin → **Plugins** → "ELMS License Client" → **Activate**।
+2. WP admin → **Plugins** → "ELMS License Client" → **Activate**.
 
-3. **Settings → ELMS License**-এ কনফিগ করুন (অথবা `wp-config.php` এ কনস্ট্যান্ট):
+3. Configure under **Settings → ELMS License** (or via constants in
+   `wp-config.php`):
    ```php
-   define('ELMS_SERVER',   'https://lic.hostnibo.com');
-   define('ELMS_API_KEY',  'elms_pk_xxx');
-   define('ELMS_API_SECRET','elms_sk_xxx');
-   define('ELMS_PRODUCT',  'WHMCS-OTP');
+   define('ELMS_SERVER',    'https://lic.hostnibo.com');
+   define('ELMS_API_KEY',   'elms_pk_xxx');
+   define('ELMS_API_SECRET', 'elms_sk_xxx');
+   define('ELMS_PRODUCT',   'WHMCS-OTP');
    ```
-   লাইসেন্স কী সেট করুন: Settings-এ `elms_license_key` অপশনে।
+   Set the license key in the `elms_license_key` option.
 
-4. কোডে চেক:
+4. Check in code:
    ```php
    if (ELMS_License_Client::isValid()) {
-       // লাইসেন্স ভেলিড
+       // license is valid
    }
    ```
-   API secret `wp_options`-এ AES-256-CBC দিয়ে এনক্রিপ্ট করে সেভ হয়, আর ভেরিফাই রেজাল্ট ১০ মিনিট ক্যাশ হয়।
+   The API secret is stored encrypted (AES-256-CBC) in `wp_options`, and the
+   verification result is cached for 10 minutes.
 
 ---
 
-## ৭. PHP SDK ইন্সটল
+## 7. Install the PHP SDK
 
-ফাইল: `sdk/php/license.php`
+File: `sdk/php/license.php`
 
 ```php
 require 'sdk/php/license.php';
@@ -195,33 +214,34 @@ $elms = new ElmsLicense([
 
 $result = $elms->verify('XXXX-XXXX-XXXX-XXXX', 'example.com');
 if ($result['status']) {
-    // লাইসেন্স ভেলিড → সফটওয়্যার চালু করুন
+    // license valid -> start the software
 } else {
-    // ইনভ্যালিড → নোটিশ দেখান
+    // invalid -> show notice
 }
 
-// অ্যাক্টিভেট / ডি-অ্যাক্টিভেট
+// activate / deactivate
 $elms->activate('XXXX-XXXX-XXXX-XXXX', 'example.com');
 $elms->deactivate('XXXX-XXXX-XXXX-XXXX', 'example.com');
 
-// আপডেট চেক
+// check for updates
 $update = $elms->checkUpdate('1.0.0');
 ```
 
-SDK ফিচার: HMAC রিকোয়েস্ট সিগনেচার, রেস্পন্স সিগনেচার ভেরিফাই, লোকাল ক্যাশ (আউটেজেও সফটওয়্যার চলবে), SSL ভেরিফাই।
+SDK features: HMAC request signing, response signature verification, local
+caching (software keeps working during outages), SSL verification.
 
 ---
 
-## ৮. Laravel Package ইন্সটল
+## 8. Install the Laravel package
 
-ফোল্ডার: `sdk/laravel/`
+Folder: `sdk/laravel/`
 
 ```bash
-composer require elms/laravel-license   # লোকাল/VCS রিপো থেকে
+composer require elms/laravel-license   # from a local/VCS repo
 php artisan vendor:publish --tag=elms-config
 ```
 
-`.env` এ কনফিগ:
+Config in `.env`:
 ```env
 ELMS_SERVER=https://lic.hostnibo.com
 ELMS_API_KEY=elms_pk_xxx
@@ -230,27 +250,27 @@ ELMS_PRODUCT=WHMCS-OTP
 ELMS_CACHE_TTL=43200
 ```
 
-কোডে ব্যবহার:
+Usage in code:
 ```php
 if (app('elms.license')->isValid($licenseKey)) {
-    // ভেলিড
+    // valid
 }
 ```
 
 ---
 
-## ৯. ট্রাবলশুটিং
+## 9. Troubleshooting
 
-| সমস্যা | সমাধান |
-|--------|--------|
-| API থেকে `Untrusted server response` | (a) client-এর `api_secret` সার্ভারের সেই key-এর `secret_key`-এর সাথে মিলছে কিনা চেক করুন, (b) CDN/proxy বডি বদলাচ্ছে কিনা দেখুন |
-| `X-Signature` ভুল | `sha256(body)` ঠিক মতো হিসাব করা হয়েছে কিনা এবং timestamp ±300s-এর মধ্যে কিনা দেখুন |
-| Admin login ওপেন হয় না | `APP_URL` ঠিক আছে কিনা এবং `.env` লোড হচ্ছে কিনা চেক করুন |
-| DB error | `php scripts/install.php` চালিয়ে ডাটাবেস + স্কিমা তৈরি করুন |
+| Problem | Solution |
+|---------|----------|
+| API returns `Untrusted server response` | (a) check the client `api_secret` matches the `secret_key` of that key in ELMS, (b) check a CDN/proxy is not altering the body |
+| `X-Signature` is wrong | verify `sha256(body)` is computed correctly and the timestamp is within ±300s |
+| Admin login does not open | check `APP_URL` is correct and `.env` is loaded |
+| DB error | run `php scripts/install.php` to create the database + schema |
 
 ---
 
-## ১০. সাপোর্ট / রেফারেন্স
+## 10. Support / Reference
 
 - Admin: `https://lic.hostnibo.com/admin`
 - Health: `https://lic.hostnibo.com/health`

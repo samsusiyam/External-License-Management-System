@@ -380,3 +380,92 @@ code, .elms-mono {
     .elms-main { padding-left: .9rem !important; padding-right: .9rem !important; }
     .elms-stat-icon { width: 40px; height: 40px; }
 }
+
+/* ---------- Documentation page ---------- */
+.elms-card {
+    background: var(--elms-card);
+    border: 1px solid var(--elms-border);
+    border-radius: var(--elms-radius);
+    box-shadow: var(--elms-shadow-sm);
+    overflow: hidden;
+}
+.elms-card-head {
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--elms-border);
+    background: linear-gradient(180deg, #fff, #fbfdfc);
+}
+.elms-card-head h4 { font-family: var(--elms-font-display); font-size: 1.15rem; }
+.elms-card-head i { font-size: 1.4rem; color: var(--elms-accent); }
+.elms-card-body { padding: 1.6rem 1.9rem; }
+
+.elms-doc { line-height: 1.7; color: var(--elms-ink); }
+.elms-doc h1, .elms-doc h2, .elms-doc h3, .elms-doc h4 {
+    font-family: var(--elms-font-display);
+    margin: 1.8rem 0 .9rem;
+    line-height: 1.25;
+}
+.elms-doc h1 { font-size: 1.7rem; }
+.elms-doc h2 {
+    font-size: 1.3rem;
+    padding-bottom: .4rem;
+    border-bottom: 2px solid var(--elms-accent-soft);
+    color: var(--elms-accent-600);
+}
+.elms-doc h3 { font-size: 1.1rem; }
+.elms-doc h4 { font-size: 1rem; }
+.elms-doc h1:first-child, .elms-doc h2:first-child { margin-top: 0; }
+
+.elms-doc p { margin: 0 0 1rem; }
+
+.elms-doc ul, .elms-doc ol { margin: 0 0 1rem; padding-left: 1.4rem; }
+.elms-doc li { margin: .25rem 0; }
+
+.elms-doc blockquote {
+    margin: 0 0 1rem;
+    padding: .6rem 1rem;
+    border-left: 3px solid var(--elms-accent);
+    background: var(--elms-accent-soft);
+    border-radius: var(--elms-radius-sm);
+    color: var(--elms-muted);
+}
+
+.elms-doc code {
+    font-family: var(--elms-font-mono);
+    font-size: .82em;
+    background: #f1f5f9;
+    color: #0f766e;
+    padding: .12em .4em;
+    border-radius: 6px;
+}
+.elms-doc pre.elms-code {
+    background: var(--elms-ink-1);
+    color: #e2e8f0;
+    padding: 1rem 1.2rem;
+    border-radius: var(--elms-radius-sm);
+    overflow-x: auto;
+    margin: 0 0 1.2rem;
+}
+.elms-doc pre.elms-code code {
+    background: none;
+    color: inherit;
+    padding: 0;
+    font-size: .82rem;
+    line-height: 1.6;
+}
+
+.elms-doc a { color: var(--elms-accent-600); text-decoration: none; }
+.elms-doc a:hover { text-decoration: underline; }
+
+.elms-doc .elms-table {
+    margin: 0 0 1.2rem;
+    font-size: .92rem;
+}
+.elms-doc .elms-table th {
+    background: var(--elms-accent-soft);
+    color: var(--elms-accent-600);
+    font-family: var(--elms-font-display);
+    font-weight: 600;
+}
+.elms-doc .elms-table td code { white-space: nowrap; }
+
+.elms-doc hr { border: 0; border-top: 1px solid var(--elms-border); margin: 1.6rem 0; }

@@ -47,6 +47,8 @@ if (!empty($admin['name'])) {
             <a class="nav-link <?= str_contains($path, '/admin/apikeys') ? 'active' : '' ?>" href="<?= $base ?>/admin/apikeys"><i class="bi bi-hdd-network"></i>API Keys</a>
             <a class="nav-link <?= str_contains($path, '/admin/logs/api') ? 'active' : '' ?>" href="<?= $base ?>/admin/logs/api"><i class="bi bi-list-columns"></i>API Logs</a>
             <a class="nav-link <?= str_contains($path, '/admin/logs/audit') ? 'active' : '' ?>" href="<?= $base ?>/admin/logs/audit"><i class="bi bi-journal-text"></i>Audit Logs</a>
+            <div class="elms-nav-label">Help</div>
+            <a class="nav-link <?= str_contains($path, '/admin/docs') ? 'active' : '' ?>" href="<?= $base ?>/admin/docs"><i class="bi bi-book"></i>Documentation</a>
         </nav>
         <div class="elms-side-foot">
             <i class="bi bi-shield-check me-1" style="color:#6ee7b7"></i> Encrypted &amp; signed

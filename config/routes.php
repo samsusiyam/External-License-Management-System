@@ -85,3 +85,6 @@ $router->post('/admin/apikeys/{id}/delete',   'App\Controllers\Admin\ApiKeyContr
 // Logs
 $router->get('/admin/logs/api',   'App\Controllers\Admin\LogController@apiLogs', $auth);
 $router->get('/admin/logs/audit', 'App\Controllers\Admin\LogController@auditLogs', $auth);
+
+// Documentation
+$router->get('/admin/docs', 'App\Controllers\Admin\DocumentationController@show', $auth);
