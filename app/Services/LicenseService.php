@@ -119,6 +119,10 @@ class LicenseService
             $license   = $check['data']['license'];
             $licenseId = (int) $license['id'];
 
+            // Serialise activation-limit handling: lock the license row so a
+            // concurrent request cannot pass the limit check before we insert.
+            $this->licenses->lockForUpdate($licenseId);
+
             // Already activated for this domain? Refresh and return success.
             $existing = $this->activations->findActive($licenseId, $domain);
             if ($existing !== null) {

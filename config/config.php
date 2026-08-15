@@ -43,6 +43,8 @@ return [
         'signature_max_skew' => (int) Config::env('SIGNATURE_MAX_SKEW', '300'),
         'rate_limit_max'     => (int) Config::env('RATE_LIMIT_MAX', '120'),
         'rate_limit_window'  => (int) Config::env('RATE_LIMIT_WINDOW', '60'),
+        'login_max_attempts' => (int) Config::env('LOGIN_MAX_ATTEMPTS', '5'),
+        'login_window'       => (int) Config::env('LOGIN_WINDOW', '900'),
     ],
 
     'log' => [

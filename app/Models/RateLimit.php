@@ -43,4 +43,15 @@ class RateLimit extends Model
             ['ws' => $olderThan]
         )->rowCount();
     }
+
+    /**
+     * Remove all counters for an identifier (used to reset a login lockout).
+     */
+    public function clear(string $identifier): int
+    {
+        return $this->db()->run(
+            "DELETE FROM `rate_limits` WHERE identifier = :id",
+            ['id' => $identifier]
+        )->rowCount();
+    }
 }

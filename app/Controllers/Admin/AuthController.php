@@ -7,6 +7,7 @@ use App\Core\Csrf;
 use App\Core\Request;
 use App\Models\AdminUser;
 use App\Services\AuditService;
+use App\Services\LoginThrottle;
 
 /**
  * AuthController
@@ -34,6 +35,12 @@ class AuthController extends Controller
             $this->redirect('/admin/login');
         }
 
+        $throttle = new LoginThrottle($request->ip());
+        if ($throttle->isBlocked()) {
+            $this->flash('error', 'Too many failed attempts. Please try again later.');
+            $this->redirect('/admin/login');
+        }
+
         $username = trim((string) $request->input('username'));
         $password = (string) $request->input('password');
 
@@ -41,6 +48,7 @@ class AuthController extends Controller
         $user  = $model->findByUsername($username);
 
         if ($user === null || $user['status'] !== 'active' || !password_verify($password, $user['password_hash'])) {
+            $throttle->recordFailure();
             AuditService::log('admin.login_failed', 'admin', $username, null, null,
                 ['reason' => 'bad_credentials'], $request->ip());
             $this->flash('error', 'Invalid username or password.');
@@ -53,6 +61,10 @@ class AuthController extends Controller
                 'password_hash' => password_hash($password, PASSWORD_BCRYPT),
             ]);
         }
+
+        // Successful login: clear the failure counter so the admin is not
+        // penalised on the next session.
+        $throttle->clear();
 
         // Session fixation defense.
         session_regenerate_id(true);

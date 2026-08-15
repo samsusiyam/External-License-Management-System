@@ -19,6 +19,21 @@ class License extends Model
     }
 
     /**
+     * Lock a single license row for the duration of the current transaction
+     * (SELECT ... FOR UPDATE). Used by LicenseService to serialise
+     * activation-limit checks and prevent races under concurrency.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function lockForUpdate(int $id): ?array
+    {
+        return $this->db()->fetch(
+            "SELECT * FROM `licenses` WHERE `id` = :id FOR UPDATE",
+            ['id' => $id]
+        );
+    }
+
+    /**
      * License rows joined with product info, with optional filters.
      *
      * @param array<string,mixed> $filters
