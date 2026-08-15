@@ -1,5 +1,5 @@
 # Environment / secrets
-.env
+# .env is intentionally tracked so the production server can pull live credentials
 .env.local
 .env.*.local
 
