@@ -1,0 +1,26 @@
+{
+    "name": "elms/laravel-license",
+    "description": "ELMS License SDK for Laravel applications.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "illuminate/support": "^9.0|^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Elms\\License\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Elms\\License\\ElmsLicenseServiceProvider"
+            ],
+            "aliases": {
+                "ElmsLicense": "Elms\\License\\ElmsLicenseManager"
+            }
+        }
+    },
+    "minimum-stability": "stable"
+}

@@ -1,0 +1,17 @@
+# Environment / secrets
+.env
+
+# Logs & backups
+storage/logs/*
+storage/backups/*
+!storage/logs/.gitkeep
+!storage/backups/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Dependencies
+vendor/
+node_modules/

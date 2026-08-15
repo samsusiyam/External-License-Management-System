@@ -1,0 +1,10 @@
+# Redirect root of the project to the public/ web root.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Deny direct access to sensitive locations.
+<FilesMatch "\.(env|sql|md|log)$">
+    Require all denied
+</FilesMatch>

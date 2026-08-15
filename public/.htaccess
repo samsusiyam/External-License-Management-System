@@ -1,0 +1,25 @@
+# ELMS front-controller rewrite (public/)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /license/public/
+
+    # Serve existing files/directories directly (assets).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route everything else to the front controller.
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Do not expose dotfiles
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
