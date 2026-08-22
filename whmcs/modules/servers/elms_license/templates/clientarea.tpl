@@ -74,6 +74,19 @@
                 </div>
             </div>
         </div>
+
+        <!-- Download & Support Action Bar -->
+        <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-semibold text-dark small"><i class="fas fa-box-open text-primary me-1"></i> Installation Package</span>
+                <div class="text-muted small">Download the latest software module files.</div>
+            </div>
+            <div>
+                <a href="downloads.php" class="btn btn-primary btn-sm px-3">
+                    <i class="fas fa-download me-1"></i> Download Files
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
