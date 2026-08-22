@@ -27,22 +27,26 @@ $router->get('/health', function (): void {
 });
 
 // ---------------------------------------------------------------------------
-// REST API (signed + rate limited)
+// REST API - Client License Verification (Direct key + domain verification)
 // ---------------------------------------------------------------------------
-$apiMw = ['rate', 'api'];
+$clientMw = ['rate'];
 
-$router->post('/api/license/create',     'App\Controllers\Api\LicenseApiController@create', $apiMw);
-$router->post('/api/license/verify',     'App\Controllers\Api\LicenseApiController@verify', $apiMw);
-$router->post('/api/license/activate',   'App\Controllers\Api\LicenseApiController@activate', $apiMw);
-$router->post('/api/license/deactivate', 'App\Controllers\Api\LicenseApiController@deactivate', $apiMw);
-$router->post('/api/license/renew',      'App\Controllers\Api\LicenseApiController@renew', $apiMw);
-$router->post('/api/license/reset',      'App\Controllers\Api\LicenseApiController@reset', $apiMw);
+$router->post('/api/license/verify',     'App\Controllers\Api\LicenseApiController@verify', $clientMw);
+$router->post('/api/license/activate',   'App\Controllers\Api\LicenseApiController@activate', $clientMw);
+$router->post('/api/license/deactivate', 'App\Controllers\Api\LicenseApiController@deactivate', $clientMw);
+$router->post('/api/updates/check',      'App\Controllers\Api\UpdateApiController@check', $clientMw);
 
-$router->post('/api/license/suspend',    'App\Controllers\Api\StatusApiController@suspend', $apiMw);
-$router->post('/api/license/unsuspend',  'App\Controllers\Api\StatusApiController@unsuspend', $apiMw);
-$router->post('/api/license/terminate',  'App\Controllers\Api\StatusApiController@terminate', $apiMw);
+// ---------------------------------------------------------------------------
+// REST API - Administrative Endpoints (Requires API Key)
+// ---------------------------------------------------------------------------
+$adminApiMw = ['rate', 'api'];
 
-$router->post('/api/updates/check',      'App\Controllers\Api\UpdateApiController@check', $apiMw);
+$router->post('/api/license/create',     'App\Controllers\Api\LicenseApiController@create', $adminApiMw);
+$router->post('/api/license/renew',      'App\Controllers\Api\LicenseApiController@renew', $adminApiMw);
+$router->post('/api/license/reset',      'App\Controllers\Api\LicenseApiController@reset', $adminApiMw);
+$router->post('/api/license/suspend',    'App\Controllers\Api\StatusApiController@suspend', $adminApiMw);
+$router->post('/api/license/unsuspend',  'App\Controllers\Api\StatusApiController@unsuspend', $adminApiMw);
+$router->post('/api/license/terminate',  'App\Controllers\Api\StatusApiController@terminate', $adminApiMw);
 
 // ---------------------------------------------------------------------------
 // Admin: authentication

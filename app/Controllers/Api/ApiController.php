@@ -39,7 +39,11 @@ abstract class ApiController
         $secret = $key !== null ? (string) $key['secret_key'] : '';
         $apiKey = $key !== null ? (string) $key['api_key'] : '';
 
-        Response::jsonSigned($payload, $secret, $apiKey, $status);
+        if (!empty($secret) && !empty($apiKey)) {
+            Response::jsonSigned($payload, $secret, $apiKey, $status);
+        } else {
+            Response::json($payload, $status);
+        }
     }
 
     /**
