@@ -45,6 +45,16 @@
                     </div>
                 </div>
             </div>
+            {if $ip_address}
+                <div class="col-md-6">
+                    <div class="border rounded p-3 h-100">
+                        <div class="text-muted small">Registered IP Address</div>
+                        <div class="fw-bold fs-6 mt-1 text-dark">
+                            <i class="fas fa-network-wired text-primary me-1"></i> {$ip_address}
+                        </div>
+                    </div>
+                </div>
+            {/if}
             <div class="col-md-6">
                 <div class="border rounded p-3 h-100">
                     <div class="text-muted small">Product</div>

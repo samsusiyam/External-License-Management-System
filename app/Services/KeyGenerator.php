@@ -16,7 +16,7 @@ class KeyGenerator
      */
     public static function licenseKey(int $groups = 4, int $groupLen = 4): string
     {
-        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I,O,0,1
+        $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no I,L,O,0,1
         $max = strlen($alphabet) - 1;
         $segments = [];
         for ($g = 0; $g < $groups; $g++) {

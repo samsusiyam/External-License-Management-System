@@ -395,17 +395,17 @@ class LicenseService
             }
         }
 
-        // Domain lock.
-        if ((int) $license['domain_lock'] === 1 && !empty($license['domain'])) {
+        // Domain check (enforced if license is bound to a domain or domain_lock is active)
+        if (!empty($license['domain']) && $license['domain'] !== '*') {
             if ($domain === null || $domain === '' || !$this->domainMatches((string) $license['domain'], $domain)) {
-                return $this->fail('Domain mismatch');
+                return $this->fail('Domain mismatch: License registered for ' . $license['domain']);
             }
         }
 
-        // IP lock.
-        if ((int) $license['ip_lock'] === 1 && !empty($license['ip_address'])) {
+        // IP check (enforced if ip_lock is enabled or ip_address is bound)
+        if ((int) $license['ip_lock'] === 1 && !empty($license['ip_address']) && $license['ip_address'] !== '*') {
             if ($ip === null || $ip === '' || !hash_equals((string) $license['ip_address'], $ip)) {
-                return $this->fail('IP mismatch');
+                return $this->fail('IP mismatch: License registered for IP ' . $license['ip_address']);
             }
         }
 

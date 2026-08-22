@@ -35,6 +35,8 @@ $router->post('/api/license/verify',     'App\Controllers\Api\LicenseApiControll
 $router->post('/api/license/activate',   'App\Controllers\Api\LicenseApiController@activate', $clientMw);
 $router->post('/api/license/deactivate', 'App\Controllers\Api\LicenseApiController@deactivate', $clientMw);
 $router->post('/api/updates/check',      'App\Controllers\Api\UpdateApiController@check', $clientMw);
+$router->get('/api/products',            'App\Controllers\Api\ProductApiController@index', $clientMw);
+$router->post('/api/products',           'App\Controllers\Api\ProductApiController@index', $clientMw);
 
 // ---------------------------------------------------------------------------
 // REST API - Administrative Endpoints (Requires API Key)

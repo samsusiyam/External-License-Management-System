@@ -1,15 +1,21 @@
 <?php
 
 /**
- * ELMS License Server — WHMCS Provisioning Module
+ * ELMS License Server — WHMCS Provisioning Server Module (cPanel-Style)
  *
- * This module allows WHMCS products to provision software licenses like a
- * standard server/cPanel module. When an order is placed, customer enters their
- * domain, and WHMCS automatically creates, suspends, unsuspends, terminates,
- * and displays the license key directly inside the WHMCS Client Area & Admin Panel.
+ * Connect your ELMS License Server once globally under Setup > Products/Services > Servers
+ * or via the Addon Module. In your products, simply select "ELMS License Server" and choose
+ * your product from the dynamic dropdown!
+ *
+ * Features:
+ * - One-time global API connection (no need to re-enter API keys per product)
+ * - Dynamic product selection dropdown
+ * - Automatic domain extraction from Custom Fields or WHMCS Domain input
+ * - Automatic IP extraction from Custom Fields (only locks IP if provided)
+ * - Real-time Client Area & Admin Panel license management
  *
  * @package    ELMS
- * @version    2.0.0
+ * @version    2.1.0
  */
 
 if (!defined('WHMCS')) {
@@ -28,41 +34,50 @@ function elms_license_MetaData()
     return [
         'DisplayName'       => 'ELMS License Server',
         'APIVersion'        => '1.1',
-        'RequiresServer'    => false,
+        'RequiresServer'    => true,
         'DefaultNonSSLPort' => '80',
         'DefaultSSLPort'    => '443',
     ];
 }
 
 /**
- * Module configuration options shown in WHMCS:
+ * Dynamic Product Configuration in WHMCS:
  * Setup > Products/Services > Products/Services > Edit Product > Module Settings
  *
+ * @param array<string,mixed> $params
  * @return array<string,mixed>
  */
-function elms_license_ConfigOptions()
+function elms_license_ConfigOptions(array $params = [])
 {
+    $creds = elms_server_resolve_credentials($params);
+    $productOptions = ['0' => 'Auto-Match by WHMCS Product Name'];
+
+    // Fetch active products from ELMS Server to build dynamic dropdown
+    if (!empty($creds['server_url'])) {
+        try {
+            $resp = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/products', []);
+            if (!empty($resp['data']['products'])) {
+                foreach ($resp['data']['products'] as $prod) {
+                    $key = (string) ($prod['product_key'] ?: $prod['id']);
+                    $productOptions[$key] = $prod['product_name'] . ' (' . $prod['product_key'] . ')';
+                }
+            }
+        } catch (\Throwable $e) {
+            // fallback
+        }
+    }
+
+    $productOptionsString = '';
+    foreach ($productOptions as $k => $label) {
+        $productOptionsString .= ($productOptionsString ? ',' : '') . $k . '|' . str_replace(',', ' ', $label);
+    }
+
     return [
-        'License Server URL' => [
-            'Type'        => 'text',
-            'Size'        => '60',
-            'Default'     => 'https://lic.yourdomain.com',
-            'Description' => 'Base URL of your ELMS server (without trailing slash).',
-        ],
-        'API Key' => [
-            'Type'        => 'text',
-            'Size'        => '50',
-            'Description' => 'Public API key from ELMS > API Keys.',
-        ],
-        'API Secret' => [
-            'Type'        => 'password',
-            'Size'        => '60',
-            'Description' => 'Secret key paired with the API key.',
-        ],
-        'ELMS Product Key / ID' => [
-            'Type'        => 'text',
-            'Size'        => '30',
-            'Description' => 'Product Key or ID on ELMS. Leave blank to auto-match WHMCS product name.',
+        'Select ELMS Product' => [
+            'Type'        => 'dropdown',
+            'Options'     => $productOptionsString,
+            'Default'     => '0',
+            'Description' => 'Choose which software product this WHMCS product issues licenses for.',
         ],
         'Activation Limit' => [
             'Type'        => 'text',
@@ -78,9 +93,24 @@ function elms_license_ConfigOptions()
         ],
         'Enforce IP Lock' => [
             'Type'        => 'dropdown',
-            'Options'     => 'No,Yes',
-            'Default'     => 'No',
-            'Description' => 'Lock license to the customer server IP address.',
+            'Options'     => 'Auto (if IP provided),Always,Never',
+            'Default'     => 'Auto (if IP provided)',
+            'Description' => 'Auto: Locks IP only if the customer provided an IP Address.',
+        ],
+        'License Server URL (Optional Override)' => [
+            'Type'        => 'text',
+            'Size'        => '60',
+            'Description' => 'Leave blank to use global server from Setup > Servers or Addon.',
+        ],
+        'API Key (Optional Override)' => [
+            'Type'        => 'text',
+            'Size'        => '50',
+            'Description' => 'Leave blank to use global API Key.',
+        ],
+        'API Secret (Optional Override)' => [
+            'Type'        => 'password',
+            'Size'        => '60',
+            'Description' => 'Leave blank to use global API Secret.',
         ],
     ];
 }
@@ -93,18 +123,16 @@ function elms_license_ConfigOptions()
  */
 function elms_license_TestConnection(array $params)
 {
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey    = (string) ($params['configoption2'] ?? '');
-    $apiSecret = (string) ($params['configoption3'] ?? '');
+    $creds = elms_server_resolve_credentials($params);
 
-    if ($serverUrl === '' || $apiKey === '' || $apiSecret === '') {
+    if (empty($creds['server_url'])) {
         return [
             'success' => false,
-            'error'   => 'Please provide License Server URL, API Key, and API Secret.',
+            'error'   => 'No License Server configured. Please configure under Setup > Servers or Addon Module.',
         ];
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/verify', [
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/verify', [
         'license_key' => 'TEST-PING-' . time(),
         'domain'      => 'ping.test',
     ]);
@@ -112,13 +140,13 @@ function elms_license_TestConnection(array $params)
     if (isset($res['status'])) {
         return [
             'success' => true,
-            'data'    => 'Connected successfully to ' . $serverUrl,
+            'data'    => 'Connected successfully to ' . $creds['server_url'] . ' (API responding)',
         ];
     }
 
     return [
         'success' => false,
-        'error'   => $res['message'] ?? 'Connection error',
+        'error'   => $res['message'] ?? 'Connection failed',
     ];
 }
 
@@ -130,19 +158,33 @@ function elms_license_TestConnection(array $params)
  */
 function elms_license_CreateAccount(array $params)
 {
-    $serverUrl       = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey          = (string) ($params['configoption2'] ?? '');
-    $apiSecret       = (string) ($params['configoption3'] ?? '');
-    $productConfig   = trim((string) ($params['configoption4'] ?? ''));
-    $activationLimit = max(1, (int) ($params['configoption5'] ?? 1));
-    $domainLock      = ($params['configoption6'] ?? 'Yes') === 'Yes' ? 1 : 0;
-    $ipLock          = ($params['configoption7'] ?? 'No') === 'Yes' ? 1 : 0;
+    $creds           = elms_server_resolve_credentials($params);
+    $selectedProduct = trim((string) ($params['configoption1'] ?? '0'));
+    $activationLimit = max(1, (int) ($params['configoption2'] ?? 1));
+    $domainLockOpt   = $params['configoption3'] ?? 'Yes';
+    $ipLockOpt       = $params['configoption4'] ?? 'Auto (if IP provided)';
+
+    if (empty($creds['server_url'])) {
+        return 'ELMS Error: License Server URL is not configured.';
+    }
 
     $serviceId = (int) $params['serviceid'];
-    $domain    = trim((string) ($params['domain'] ?? ''));
     $expiry    = $params['model']->nextduedate ?? null;
 
-    $customerName = trim(($params['clientsdetails']['firstname'] ?? '') . ' ' . ($params['clientsdetails']['lastname'] ?? ''));
+    // Extract Domain and IP from Custom Fields or standard WHMCS fields
+    $domain = elms_extract_domain($params);
+    $ip     = elms_extract_ip($params);
+
+    $domainLock = ($domainLockOpt === 'Yes' && !empty($domain)) ? 1 : 0;
+    
+    $ipLock = 0;
+    if ($ipLockOpt === 'Always') {
+        $ipLock = 1;
+    } elseif ($ipLockOpt === 'Auto (if IP provided)' && !empty($ip)) {
+        $ipLock = 1;
+    }
+
+    $customerName  = trim(($params['clientsdetails']['firstname'] ?? '') . ' ' . ($params['clientsdetails']['lastname'] ?? ''));
     $customerEmail = $params['clientsdetails']['email'] ?? null;
 
     $payload = [
@@ -150,37 +192,39 @@ function elms_license_CreateAccount(array $params)
         'customer_name'    => $customerName ?: 'Client #' . ($params['clientsdetails']['userid'] ?? $serviceId),
         'customer_email'   => $customerEmail,
         'domain'           => $domain ?: null,
+        'ip_address'       => $ip ?: null,
         'expiry_date'      => $expiry,
         'activation_limit' => $activationLimit,
         'domain_lock'      => $domainLock,
         'ip_lock'          => $ipLock,
     ];
 
-    if ($productConfig !== '') {
-        if (is_numeric($productConfig)) {
-            $payload['product_id'] = (int) $productConfig;
+    if ($selectedProduct !== '0' && $selectedProduct !== '') {
+        if (is_numeric($selectedProduct)) {
+            $payload['product_id'] = (int) $selectedProduct;
         } else {
-            $payload['product'] = $productConfig;
+            $payload['product'] = $selectedProduct;
         }
     } else {
         $payload['product'] = $params['package'] ?? '';
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/create', $payload);
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/create', $payload);
 
     if (!empty($res['status']) && !empty($res['data']['license_key'])) {
         $licKey  = (string) $res['data']['license_key'];
         $prodKey = (string) ($res['data']['product'] ?? '');
 
-        // Store license key in WHMCS Service password & username fields
+        // Store license key in WHMCS Service credentials
         Capsule::table('tblhosting')
             ->where('id', $serviceId)
             ->update([
                 'password' => encrypt($licKey),
                 'username' => $licKey,
+                'domain'   => $domain ?: $params['domain'],
             ]);
 
-        // Also track in mod_elms_licenses
+        // Also track in mod_elms_licenses table
         try {
             if (!Capsule::schema()->hasTable('mod_elms_licenses')) {
                 Capsule::schema()->create('mod_elms_licenses', function ($table) {
@@ -196,9 +240,10 @@ function elms_license_CreateAccount(array $params)
                 ['service_id' => $serviceId],
                 ['license_key' => $licKey, 'product_key' => $prodKey, 'status' => 'active', 'created_at' => date('Y-m-d H:i:s')]
             );
-        } catch (\Throwable $e) {
-            // ignore
-        }
+        } catch (\Throwable $e) {}
+
+        // Auto-fill Custom Field named 'License Key' if exists
+        elms_server_sync_custom_field($serviceId, (int) ($params['packageid'] ?? ($params['pid'] ?? 0)), $licKey);
 
         return 'success';
     }
@@ -208,22 +253,17 @@ function elms_license_CreateAccount(array $params)
 
 /**
  * Suspend License.
- *
- * @param array<string,mixed> $params
- * @return string 'success' or error message
  */
 function elms_license_SuspendAccount(array $params)
 {
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey    = (string) ($params['configoption2'] ?? '');
-    $apiSecret = (string) ($params['configoption3'] ?? '');
-    $licKey    = elms_server_get_license_key($params);
+    $creds  = elms_server_resolve_credentials($params);
+    $licKey = elms_server_get_license_key($params);
 
     if ($licKey === '') {
         return 'No License Key assigned to this service.';
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/suspend', [
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/suspend', [
         'license_key' => $licKey,
     ]);
 
@@ -239,22 +279,17 @@ function elms_license_SuspendAccount(array $params)
 
 /**
  * Unsuspend License.
- *
- * @param array<string,mixed> $params
- * @return string 'success' or error message
  */
 function elms_license_UnsuspendAccount(array $params)
 {
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey    = (string) ($params['configoption2'] ?? '');
-    $apiSecret = (string) ($params['configoption3'] ?? '');
-    $licKey    = elms_server_get_license_key($params);
+    $creds  = elms_server_resolve_credentials($params);
+    $licKey = elms_server_get_license_key($params);
 
     if ($licKey === '') {
         return 'No License Key assigned to this service.';
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/unsuspend', [
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/unsuspend', [
         'license_key' => $licKey,
     ]);
 
@@ -270,22 +305,17 @@ function elms_license_UnsuspendAccount(array $params)
 
 /**
  * Terminate License.
- *
- * @param array<string,mixed> $params
- * @return string 'success' or error message
  */
 function elms_license_TerminateAccount(array $params)
 {
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey    = (string) ($params['configoption2'] ?? '');
-    $apiSecret = (string) ($params['configoption3'] ?? '');
-    $licKey    = elms_server_get_license_key($params);
+    $creds  = elms_server_resolve_credentials($params);
+    $licKey = elms_server_get_license_key($params);
 
     if ($licKey === '') {
         return 'success';
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/terminate', [
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/terminate', [
         'license_key' => $licKey,
     ]);
 
@@ -301,15 +331,10 @@ function elms_license_TerminateAccount(array $params)
 
 /**
  * Renew License (Extend Expiry).
- *
- * @param array<string,mixed> $params
- * @return string 'success' or error message
  */
 function elms_license_Renew(array $params)
 {
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey    = (string) ($params['configoption2'] ?? '');
-    $apiSecret = (string) ($params['configoption3'] ?? '');
+    $creds     = elms_server_resolve_credentials($params);
     $licKey    = elms_server_get_license_key($params);
     $newExpiry = $params['model']->nextduedate ?? null;
 
@@ -317,7 +342,7 @@ function elms_license_Renew(array $params)
         return 'success';
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/renew', [
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/renew', [
         'license_key' => $licKey,
         'expiry_date' => $newExpiry,
     ]);
@@ -327,8 +352,6 @@ function elms_license_Renew(array $params)
 
 /**
  * Custom Admin Action Buttons on Service View.
- *
- * @return array<string,string>
  */
 function elms_license_AdminCustomButtonArray()
 {
@@ -341,18 +364,17 @@ function elms_license_AdminCustomButtonArray()
 
 function elms_license_VerifyLicenseStatus(array $params)
 {
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey    = (string) ($params['configoption2'] ?? '');
-    $apiSecret = (string) ($params['configoption3'] ?? '');
-    $licKey    = elms_server_get_license_key($params);
+    $creds  = elms_server_resolve_credentials($params);
+    $licKey = elms_server_get_license_key($params);
+    $domain = elms_extract_domain($params);
 
     if ($licKey === '') {
         return 'Error: No license key found for this service.';
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/verify', [
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/verify', [
         'license_key' => $licKey,
-        'domain'      => $params['domain'] ?? null,
+        'domain'      => $domain,
     ]);
 
     return !empty($res['status']) ? ('License Valid! Status: ' . ($res['data']['status'] ?? 'active') . ', Expiry: ' . ($res['data']['expiry'] ?? 'Never')) : ('License Error: ' . ($res['message'] ?? 'Invalid'));
@@ -365,16 +387,14 @@ function elms_license_ReissueLicenseKey(array $params)
 
 function elms_license_ResetLicenseBindings(array $params)
 {
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $apiKey    = (string) ($params['configoption2'] ?? '');
-    $apiSecret = (string) ($params['configoption3'] ?? '');
-    $licKey    = elms_server_get_license_key($params);
+    $creds  = elms_server_resolve_credentials($params);
+    $licKey = elms_server_get_license_key($params);
 
     if ($licKey === '') {
         return 'Error: No license key found.';
     }
 
-    $res = elms_server_api_call($serverUrl, $apiKey, $apiSecret, '/api/license/reset', [
+    $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/reset', [
         'license_key' => $licKey,
     ]);
 
@@ -383,50 +403,170 @@ function elms_license_ResetLicenseBindings(array $params)
 
 /**
  * Display license details in WHMCS Admin Service page (clientsservices.php).
- *
- * @param array<string,mixed> $params
- * @return array<string,string>
  */
 function elms_license_AdminServicesTabFields(array $params)
 {
     $licKey = elms_server_get_license_key($params);
+    $domain = elms_extract_domain($params);
+    $ip     = elms_extract_ip($params);
+    $creds  = elms_server_resolve_credentials($params);
 
     return [
         'License Key' => '<strong style="font-family:monospace; font-size:14px; color:#1e293b; background:#f1f5f9; padding:4px 8px; border-radius:4px;">' . htmlspecialchars($licKey ?: 'Not Generated Yet') . '</strong>',
-        'Assigned Domain' => htmlspecialchars($params['domain'] ?: 'Any Domain'),
-        'License Server' => htmlspecialchars($params['configoption1'] ?? 'Not Configured'),
+        'Bound Domain' => htmlspecialchars($domain ?: 'Any Domain'),
+        'Bound IP Address' => htmlspecialchars($ip ?: 'Any IP'),
+        'License Server' => htmlspecialchars($creds['server_url'] ?: 'Not Configured'),
     ];
 }
 
 /**
  * Display license key & details directly inside WHMCS Client Area Product Details page.
- *
- * @param array<string,mixed> $params
- * @return array<string,mixed>
  */
 function elms_license_ClientArea(array $params)
 {
-    $licKey    = elms_server_get_license_key($params);
-    $serverUrl = rtrim((string) ($params['configoption1'] ?? ''), '/');
-    $prodKey   = (string) ($params['configoption4'] ?? ($params['package'] ?? ''));
+    $licKey = elms_server_get_license_key($params);
+    $domain = elms_extract_domain($params);
+    $ip     = elms_extract_ip($params);
+    $creds  = elms_server_resolve_credentials($params);
 
     return [
         'tabOverviewReplacementTemplate' => 'clientarea.tpl',
         'templateVariables' => [
             'license_key'   => $licKey,
-            'domain'        => $params['domain'] ?? '',
+            'domain'        => $domain,
+            'ip_address'    => $ip,
             'service_status'=> $params['status'] ?? 'Active',
             'nextduedate'   => $params['nextduedate'] ?? 'Perpetual',
-            'server_url'    => $serverUrl,
+            'server_url'    => $creds['server_url'],
             'product_name'  => $params['package'] ?? 'Software License',
-            'product_key'   => $prodKey,
+            'product_key'   => (string) ($params['configoption1'] ?? ($params['package'] ?? '')),
         ],
     ];
 }
 
 // ---------------------------------------------------------------------------
-// Internal Helpers
+// Smart Helpers: One-Time Global Credentials & Custom Field Resolvers
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolve server URL, API Key, and Secret from:
+ * 1. Product specific overrides ($params['configoption5'], configoption6, configoption7)
+ * 2. WHMCS Server Configuration ($params['serverhostname'], serverusername, serverpassword)
+ * 3. WHMCS Addon Module settings (tbladdonmodules)
+ * 4. tblservers table (where type = 'elms_license')
+ *
+ * @param array<string,mixed> $params
+ * @return array{server_url:string,api_key:string,api_secret:string}
+ */
+function elms_server_resolve_credentials(array $params = []): array
+{
+    // 1. Check Product-level overrides
+    $url    = rtrim((string) ($params['configoption5'] ?? ''), '/');
+    $key    = (string) ($params['configoption6'] ?? '');
+    $secret = (string) ($params['configoption7'] ?? '');
+
+    if (!empty($url) && !empty($key) && !empty($secret)) {
+        return ['server_url' => $url, 'api_key' => $key, 'api_secret' => $secret];
+    }
+
+    // 2. Check WHMCS Server / Server Group attached to product
+    if (!empty($params['serverhostname']) && !empty($params['serverusername']) && !empty($params['serverpassword'])) {
+        $scheme = (!empty($params['serversecure']) || str_starts_with($params['serverhostname'], 'https://')) ? 'https' : 'http';
+        $host = preg_replace('#^https?://#', '', $params['serverhostname']);
+        $sUrl = $scheme . '://' . rtrim($host, '/');
+        return [
+            'server_url' => $url ?: $sUrl,
+            'api_key'    => $key ?: (string) $params['serverusername'],
+            'api_secret' => $secret ?: (string) $params['serverpassword'],
+        ];
+    }
+
+    // 3. Check WHMCS Addon Module settings (tbladdonmodules)
+    try {
+        $addonSettings = Capsule::table('tbladdonmodules')
+            ->where('module', 'external_license_manager')
+            ->pluck('value', 'setting');
+        $s = is_object($addonSettings) ? $addonSettings->toArray() : (array) $addonSettings;
+
+        if (!empty($s['server_url'])) {
+            return [
+                'server_url' => $url ?: rtrim((string) $s['server_url'], '/'),
+                'api_key'    => $key ?: (string) ($s['api_key'] ?? ''),
+                'api_secret' => $secret ?: (string) ($s['api_secret'] ?? ''),
+            ];
+        }
+    } catch (\Throwable $e) {}
+
+    // 4. Check tblservers table for type = 'elms_license'
+    try {
+        $srv = Capsule::table('tblservers')->where('type', 'elms_license')->where('disabled', 0)->first();
+        if ($srv) {
+            $scheme = ($srv->secure || str_starts_with($srv->hostname, 'https://')) ? 'https' : 'http';
+            $host = preg_replace('#^https?://#', '', $srv->hostname);
+            $sUrl = $scheme . '://' . rtrim($host, '/');
+            return [
+                'server_url' => $url ?: $sUrl,
+                'api_key'    => $key ?: (string) $srv->username,
+                'api_secret' => $secret ?: (string) decrypt($srv->password),
+            ];
+        }
+    } catch (\Throwable $e) {}
+
+    return ['server_url' => $url, 'api_key' => $key, 'api_secret' => $secret];
+}
+
+/**
+ * Extract Domain name from:
+ * 1. Custom Fields: 'domain', 'Domain Name', 'Domain', 'Website', 'URL', 'Host'
+ * 2. Configurable Options: 'domain'
+ * 3. WHMCS Native $params['domain']
+ */
+function elms_extract_domain(array $params): string
+{
+    $customFields = $params['customfields'] ?? [];
+    foreach ($customFields as $k => $v) {
+        $name = strtolower(trim(str_replace([' ', '_', '-'], '', (string) $k)));
+        if (in_array($name, ['domain', 'domainname', 'website', 'url', 'host', 'site'], true) && !empty($v)) {
+            return elms_clean_domain((string) $v);
+        }
+    }
+
+    if (!empty($params['domain'])) {
+        return elms_clean_domain((string) $params['domain']);
+    }
+
+    return '';
+}
+
+/**
+ * Extract IP Address from:
+ * 1. Custom Fields: 'ip', 'IP Address', 'Server IP', 'IPAddress', 'ServerIP'
+ * 2. Dedicated IP: $params['dedicatedip']
+ */
+function elms_extract_ip(array $params): string
+{
+    $customFields = $params['customfields'] ?? [];
+    foreach ($customFields as $k => $v) {
+        $name = strtolower(trim(str_replace([' ', '_', '-'], '', (string) $k)));
+        if (in_array($name, ['ip', 'ipaddress', 'serverip', 'serveripaddress'], true) && !empty($v)) {
+            return trim((string) $v);
+        }
+    }
+
+    if (!empty($params['dedicatedip'])) {
+        return trim((string) $params['dedicatedip']);
+    }
+
+    return '';
+}
+
+function elms_clean_domain(string $domain): string
+{
+    $d = strtolower(trim($domain));
+    $d = preg_replace('#^https?://#', '', $d) ?? $d;
+    $d = explode('/', $d)[0];
+    return preg_replace('/^www\./', '', $d) ?? $d;
+}
 
 function elms_server_get_license_key(array $params): string
 {
@@ -451,6 +591,32 @@ function elms_server_get_license_key(array $params): string
     return trim($key);
 }
 
+function elms_server_sync_custom_field(int $serviceId, int $packageId, string $licenseKey): void
+{
+    if ($serviceId <= 0 || $licenseKey === '') {
+        return;
+    }
+    try {
+        $field = Capsule::table('tblcustomfields')
+            ->where('type', 'product')
+            ->where(function ($q) use ($packageId) {
+                $q->where('relid', $packageId)->orWhere('relid', 0);
+            })
+            ->where(function ($q) {
+                $q->where('fieldname', 'LIKE', '%license%')
+                  ->orWhere('fieldname', 'LIKE', '%License%');
+            })
+            ->first();
+
+        if ($field !== null) {
+            Capsule::table('tblcustomfieldsvalues')->updateOrInsert(
+                ['fieldid' => $field->id, 'relid' => $serviceId],
+                ['value' => $licenseKey]
+            );
+        }
+    } catch (\Throwable $e) {}
+}
+
 function elms_server_api_call(string $baseUrl, string $apiKey, string $apiSecret, string $path, array $payload): array
 {
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
@@ -467,7 +633,7 @@ function elms_server_api_call(string $baseUrl, string $apiKey, string $apiSecret
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => 0,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-WHMCS-Provisioner/2.0',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-WHMCS-Provisioner/2.1',
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
             'X-Api-Key: ' . $apiKey,
