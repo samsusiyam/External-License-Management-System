@@ -47,56 +47,66 @@ class LicenseService
         $ip     = !empty($data['ip_address']) ? trim((string) $data['ip_address']) : (!empty($data['ip']) ? trim((string) $data['ip']) : null);
         $whmcsServiceId = isset($data['whmcs_service_id']) ? (int) $data['whmcs_service_id'] : null;
 
-        // Check if an active license already exists for this domain on this product
+        // Check if an active license already exists for this specific WHMCS service or domain on this product
         $allowDuplicate = !empty($data['allow_duplicate']) || !empty($data['force']);
-        $reuseExisting  = !empty($data['reuse_existing']) || ($whmcsServiceId !== null && $whmcsServiceId > 0);
+        $reuseExisting  = !empty($data['reuse_existing']);
 
-        if (!$allowDuplicate && $domain !== null) {
+        $existing = null;
+        if ($whmcsServiceId !== null && $whmcsServiceId > 0) {
+            $existing = $this->licenses->findByWhmcsService($whmcsServiceId);
+            // Verify product matches if found by service id
+            if ($existing !== null && (int) $existing['product_id'] !== (int) $product['id']) {
+                $existing = null;
+            }
+        }
+
+        if ($existing === null && !$allowDuplicate && $domain !== null) {
             $existing = $this->licenses->findActiveByDomainAndProduct($domain, (int) $product['id']);
-            if ($existing !== null) {
-                if ($reuseExisting) {
-                    // Update / sync existing license if requested
-                    $updateFields = [];
-                    $newExpiry = $this->normalizeDate($data['expiry_date'] ?? ($data['expiry'] ?? null));
-                    if ($newExpiry !== null) {
-                        $updateFields['expiry_date'] = $newExpiry;
-                    }
-                    if ($whmcsServiceId !== null && $whmcsServiceId > 0) {
-                        $updateFields['whmcs_service_id'] = $whmcsServiceId;
-                    }
-                    if (!empty($data['customer_name'])) {
-                        $updateFields['customer_name'] = $data['customer_name'];
-                    }
-                    if (!empty($data['customer_email'])) {
-                        $updateFields['customer_email'] = $data['customer_email'];
-                    }
-                    if (!empty($updateFields)) {
-                        $this->licenses->updateById((int) $existing['id'], $updateFields);
-                        $existing = array_merge($existing, $updateFields);
-                    }
+        }
 
-                    AuditService::log('license.reused_existing', 'api', null, 'license', (string) $existing['id'], [
-                        'domain'     => $domain,
-                        'product_id' => $product['id'],
-                    ]);
-
-                    return $this->ok('Existing active license reused', [
-                        'license_key' => $existing['license_key'],
-                        'license_id'  => (int) $existing['id'],
-                        'expiry'      => $existing['expiry_date'],
-                        'product'     => $product['product_key'],
-                        'reused'      => true,
-                    ]);
+        if ($existing !== null) {
+            if ($reuseExisting || ($whmcsServiceId !== null && (int) ($existing['whmcs_service_id'] ?? 0) === $whmcsServiceId)) {
+                // Update / sync existing license if requested
+                $updateFields = [];
+                $newExpiry = $this->normalizeDate($data['expiry_date'] ?? ($data['expiry'] ?? null));
+                if ($newExpiry !== null) {
+                    $updateFields['expiry_date'] = $newExpiry;
+                }
+                if ($whmcsServiceId !== null && $whmcsServiceId > 0) {
+                    $updateFields['whmcs_service_id'] = $whmcsServiceId;
+                }
+                if (!empty($data['customer_name'])) {
+                    $updateFields['customer_name'] = $data['customer_name'];
+                }
+                if (!empty($data['customer_email'])) {
+                    $updateFields['customer_email'] = $data['customer_email'];
+                }
+                if (!empty($updateFields)) {
+                    $this->licenses->updateById((int) $existing['id'], $updateFields);
+                    $existing = array_merge($existing, $updateFields);
                 }
 
-                return $this->fail(
-                    'An active license already exists for domain "' . $domain . '" on product "' . $product['product_name'] . '" (Key: ' . $existing['license_key'] . ')',
-                    [
-                        'existing_license_key' => $existing['license_key'],
-                        'existing_license_id'  => (int) $existing['id'],
-                    ]
-                );
+                AuditService::log('license.reused_existing', 'api', null, 'license', (string) $existing['id'], [
+                    'domain'     => $domain,
+                    'product_id' => $product['id'],
+                ]);
+
+                return $this->ok('Existing active license reused', [
+                    'license_key' => $existing['license_key'],
+                    'license_id'  => (int) $existing['id'],
+                    'expiry'      => $existing['expiry_date'],
+                    'product'     => $product['product_key'],
+                    'reused'      => true,
+                ]);
             }
+
+            return $this->fail(
+                'An active license already exists for domain "' . $domain . '" on product "' . $product['product_name'] . '" (Key: ' . $existing['license_key'] . ')',
+                [
+                    'existing_license_key' => $existing['license_key'],
+                    'existing_license_id'  => (int) $existing['id'],
+                ]
+            );
         }
 
         // Generate a unique license key.

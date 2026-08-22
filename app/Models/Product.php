@@ -68,16 +68,18 @@ class Product extends Model
             if ($product !== null) {
                 return $product;
             }
+            return null;
         }
 
-        if (is_string($identifier) && trim($identifier) !== '') {
+        if (is_string($identifier) && trim($identifier) !== '' && $identifier !== '0') {
             $product = $this->findByNameOrKey($identifier);
             if ($product !== null) {
                 return $product;
             }
+            return null;
         }
 
-        // Fallback: first active product
+        // Fallback only if no identifier was passed
         $active = $this->findFirstActive();
         if ($active !== null) {
             return $active;
