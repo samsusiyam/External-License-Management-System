@@ -100,21 +100,6 @@ function elms_license_ConfigOptions(array $params = [])
             'Default'     => 'Auto (if IP provided)',
             'Description' => 'Auto: Locks IP only if the customer provided an IP Address.',
         ],
-        'License Server URL (Optional Override)' => [
-            'Type'        => 'text',
-            'Size'        => '60',
-            'Description' => 'Leave blank to use global server from Setup > Servers or Addon.',
-        ],
-        'API Key (Optional Override)' => [
-            'Type'        => 'text',
-            'Size'        => '50',
-            'Description' => 'Leave blank to use global API Key.',
-        ],
-        'API Secret (Optional Override)' => [
-            'Type'        => 'password',
-            'Size'        => '60',
-            'Description' => 'Leave blank to use global API Secret.',
-        ],
     ];
 }
 
@@ -521,24 +506,15 @@ function elms_format_whmcs_date($date): ?string
  */
 function elms_server_resolve_credentials(array $params = []): array
 {
-    // 1. Check Product-level overrides
-    $url    = rtrim((string) ($params['configoption5'] ?? ''), '/');
-    $key    = (string) ($params['configoption6'] ?? '');
-    $secret = (string) ($params['configoption7'] ?? '');
-
-    if (!empty($url) && !empty($key) && !empty($secret)) {
-        return ['server_url' => $url, 'api_key' => $key, 'api_secret' => $secret];
-    }
-
-    // 2. Check WHMCS Server / Server Group attached to product
+    // 1. Check WHMCS Server / Server Group attached to product
     if (!empty($params['serverhostname']) && !empty($params['serverusername']) && !empty($params['serverpassword'])) {
         $scheme = (!empty($params['serversecure']) || str_starts_with($params['serverhostname'], 'https://')) ? 'https' : 'http';
         $host = preg_replace('#^https?://#', '', $params['serverhostname']);
         $sUrl = $scheme . '://' . rtrim($host, '/');
         return [
-            'server_url' => $url ?: $sUrl,
-            'api_key'    => $key ?: (string) $params['serverusername'],
-            'api_secret' => $secret ?: (string) $params['serverpassword'],
+            'server_url' => $sUrl,
+            'api_key'    => (string) $params['serverusername'],
+            'api_secret' => (string) $params['serverpassword'],
         ];
     }
 
