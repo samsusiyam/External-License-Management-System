@@ -48,12 +48,17 @@ class LicenseService
             $key = KeyGenerator::licenseKey();
         } while ($this->licenses->keyExists($key));
 
+        $domain = !empty($data['domain']) ? trim((string) $data['domain']) : null;
+        $ip     = !empty($data['ip_address']) ? trim((string) $data['ip_address']) : (!empty($data['ip']) ? trim((string) $data['ip']) : null);
+
         $row = [
             'license_key'      => $key,
             'product_id'       => (int) $product['id'],
             'customer_name'    => $data['customer_name'] ?? ($data['customer'] ?? null),
             'customer_email'   => $data['customer_email'] ?? null,
             'whmcs_service_id' => isset($data['whmcs_service_id']) ? (int) $data['whmcs_service_id'] : null,
+            'domain'           => $domain,
+            'ip_address'       => $ip,
             'activation_limit' => isset($data['activation_limit']) ? max(1, (int) $data['activation_limit']) : 1,
             'domain_lock'      => !empty($data['domain_lock']) ? 1 : 0,
             'ip_lock'          => !empty($data['ip_lock']) ? 1 : 0,
@@ -341,15 +346,15 @@ class LicenseService
         }
 
         // Domain lock.
-        if ((int) $license['domain_lock'] === 1 && !empty($license['domain']) && $domain !== null && $domain !== '') {
-            if (!$this->domainMatches($license['domain'], $domain)) {
+        if ((int) $license['domain_lock'] === 1 && !empty($license['domain'])) {
+            if ($domain === null || $domain === '' || !$this->domainMatches((string) $license['domain'], $domain)) {
                 return $this->fail('Domain mismatch');
             }
         }
 
         // IP lock.
-        if ((int) $license['ip_lock'] === 1 && !empty($license['ip_address']) && $ip !== null && $ip !== '') {
-            if (!hash_equals((string) $license['ip_address'], $ip)) {
+        if ((int) $license['ip_lock'] === 1 && !empty($license['ip_address'])) {
+            if ($ip === null || $ip === '' || !hash_equals((string) $license['ip_address'], $ip)) {
                 return $this->fail('IP mismatch');
             }
         }

@@ -76,6 +76,8 @@ class LicenseController extends Controller
             'product_id'       => 'required|int',
             'customer_name'    => 'string|max:150',
             'customer_email'   => 'email',
+            'domain'           => 'string|max:190',
+            'ip_address'       => 'string|max:45',
             'activation_limit' => 'int',
             'expiry_date'      => 'date',
         ]);
