@@ -86,5 +86,9 @@ $router->post('/admin/apikeys/{id}/delete',   'App\Controllers\Admin\ApiKeyContr
 $router->get('/admin/logs/api',   'App\Controllers\Admin\LogController@apiLogs', $auth);
 $router->get('/admin/logs/audit', 'App\Controllers\Admin\LogController@auditLogs', $auth);
 
+// Tester & Simulator
+$router->get('/admin/tester',     'App\Controllers\Admin\TesterController@index', $auth);
+$router->post('/admin/tester/run', 'App\Controllers\Admin\TesterController@run', $auth);
+
 // Documentation
 $router->get('/admin/docs', 'App\Controllers\Admin\DocumentationController@show', $auth);

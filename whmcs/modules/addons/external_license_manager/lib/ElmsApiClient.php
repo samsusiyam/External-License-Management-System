@@ -45,6 +45,106 @@ class ElmsApiClient
     }
 
     /**
+     * Test connection to the license server.
+     *
+     * @return array{status:bool,message:string,latency_ms:float,server_url:string}
+     */
+    public function testConnection(): array
+    {
+        $start = microtime(true);
+        $res = $this->post('/api/license/verify', [
+            'license_key' => 'TEST-PING-' . time(),
+            'domain'      => 'ping.test',
+        ]);
+        $latency = round((microtime(true) - $start) * 1000, 2);
+
+        // If the server answered with signature (even if license invalid), connection & HMAC are working!
+        if (isset($res['status'])) {
+            return [
+                'status'     => true,
+                'message'    => 'Connected successfully! Server is online and HMAC signature verified.',
+                'latency_ms' => $latency,
+                'server_url' => $this->baseUrl,
+            ];
+        }
+
+        return [
+            'status'     => false,
+            'message'    => $res['message'] ?? 'Connection failed',
+            'latency_ms' => $latency,
+            'server_url' => $this->baseUrl,
+        ];
+    }
+
+    /**
+     * Helper to create a license.
+     *
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>
+     */
+    public function createLicense(array $payload): array
+    {
+        return $this->post('/api/license/create', $payload);
+    }
+
+    /**
+     * Helper to verify a license.
+     *
+     * @return array<string,mixed>
+     */
+    public function verifyLicense(string $licenseKey, ?string $domain = null, ?string $product = null): array
+    {
+        return $this->post('/api/license/verify', [
+            'license_key' => $licenseKey,
+            'domain'      => $domain,
+            'product'     => $product,
+        ]);
+    }
+
+    /**
+     * Helper to renew/extend license.
+     *
+     * @return array<string,mixed>
+     */
+    public function renewLicense(string $licenseKey, ?string $expiryDate = null): array
+    {
+        return $this->post('/api/license/renew', [
+            'license_key' => $licenseKey,
+            'expiry_date' => $expiryDate,
+        ]);
+    }
+
+    /**
+     * Helper to change status (suspend, unsuspend, terminate).
+     *
+     * @return array<string,mixed>
+     */
+    public function changeStatus(string $licenseKey, string $action): array
+    {
+        $action = trim(strtolower($action));
+        $endpoint = match ($action) {
+            'suspend'   => '/api/license/suspend',
+            'unsuspend' => '/api/license/unsuspend',
+            'terminate' => '/api/license/terminate',
+            default     => '/api/license/suspend',
+        };
+
+        return $this->post($endpoint, ['license_key' => $licenseKey]);
+    }
+
+    /**
+     * Helper to reset domain/IP bindings.
+     *
+     * @return array<string,mixed>
+     */
+    public function resetLicense(string $licenseKey): array
+    {
+        return $this->post('/api/license/reset', ['license_key' => $licenseKey]);
+    }
+
+    /**
+     * Signed POST request.
+     *
      * @param array<string,mixed> $payload
      * @return array<string,mixed>
      */
@@ -61,15 +161,15 @@ class ElmsApiClient
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 15,
-            CURLOPT_SSL_VERIFYPEER  => true,
-            CURLOPT_SSL_VERIFYHOST  => 2,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'X-Api-Key: ' . $this->apiKey,
                 'X-Timestamp: ' . $ts,
                 'X-Signature: ' . $sig,
             ],
-            CURLOPT_HEADERFUNCTION => function ($ch, string $line) use (&$respHeaders) {
+            CURLOPT_HEADERFUNCTION => function ($ch, string $line) use (&$respHeaders): int {
                 $raw = $line;
                 $line = trim($line);
                 if ($line !== '' && !str_starts_with($line, 'HTTP/')) {

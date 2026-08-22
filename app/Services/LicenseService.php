@@ -37,7 +37,8 @@ class LicenseService
      */
     public function create(array $data): array
     {
-        $product = $this->products->find((int) ($data['product_id'] ?? 0));
+        $identifier = $data['product_id'] ?? ($data['product_key'] ?? ($data['product'] ?? ($data['product_name'] ?? null)));
+        $product = $this->products->resolveSmart($identifier);
         if ($product === null) {
             return $this->fail('Invalid product');
         }
@@ -304,9 +305,18 @@ class LicenseService
         }
 
         // Product match (if provided).
-        if ($productKey !== null && $productKey !== '') {
+        if ($productKey !== null && trim($productKey) !== '') {
             $product = $this->products->find((int) $license['product_id']);
-            if ($product === null || !hash_equals((string) $product['product_key'], $productKey)) {
+            $match = false;
+            if ($product !== null) {
+                $target = strtolower(trim($productKey));
+                $pKey   = strtolower(trim((string) $product['product_key']));
+                $pName  = strtolower(trim((string) $product['product_name']));
+                if ($target === $pKey || $target === $pName || (is_numeric($productKey) && (int) $productKey === (int) $product['id'])) {
+                    $match = true;
+                }
+            }
+            if (!$match) {
                 return $this->fail('Product mismatch');
             }
         }

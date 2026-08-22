@@ -59,6 +59,23 @@ class ElmsLicense
     }
 
     /**
+     * One-liner quick verification helper:
+     * ElmsLicense::check('https://lic.example.com', 'API_KEY', 'SECRET', 'XXXX-XXXX-XXXX-XXXX', 'product-key');
+     *
+     * @return array<string,mixed>
+     */
+    public static function check(string $server, string $apiKey, string $secret, string $licenseKey, ?string $product = null, ?string $domain = null): array
+    {
+        $client = new self([
+            'server'  => $server,
+            'api_key' => $apiKey,
+            'secret'  => $secret,
+            'product' => $product ?? '',
+        ]);
+        return $client->verify($licenseKey, $domain);
+    }
+
+    /**
      * Verify a license. Returns the decoded API response array
      * (['status'=>bool, 'message'=>string, 'data'=>[...]]).
      *

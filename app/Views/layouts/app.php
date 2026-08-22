@@ -44,6 +44,7 @@ if (!empty($admin['name'])) {
             <a class="nav-link <?= str_contains($path, '/admin/licenses') ? 'active' : '' ?>" href="<?= $base ?>/admin/licenses"><i class="bi bi-key"></i>Licenses</a>
             <a class="nav-link <?= str_contains($path, '/admin/products') ? 'active' : '' ?>" href="<?= $base ?>/admin/products"><i class="bi bi-box-seam"></i>Products</a>
             <div class="elms-nav-label">System</div>
+            <a class="nav-link <?= str_contains($path, '/admin/tester') ? 'active' : '' ?>" href="<?= $base ?>/admin/tester"><i class="bi bi-play-circle"></i>API Tester</a>
             <a class="nav-link <?= str_contains($path, '/admin/apikeys') ? 'active' : '' ?>" href="<?= $base ?>/admin/apikeys"><i class="bi bi-hdd-network"></i>API Keys</a>
             <a class="nav-link <?= str_contains($path, '/admin/logs/api') ? 'active' : '' ?>" href="<?= $base ?>/admin/logs/api"><i class="bi bi-list-columns"></i>API Logs</a>
             <a class="nav-link <?= str_contains($path, '/admin/logs/audit') ? 'active' : '' ?>" href="<?= $base ?>/admin/logs/audit"><i class="bi bi-journal-text"></i>Audit Logs</a>

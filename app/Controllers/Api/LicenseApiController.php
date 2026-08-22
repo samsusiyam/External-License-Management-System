@@ -24,7 +24,6 @@ class LicenseApiController extends ApiController
     public function create(Request $request): void
     {
         $v = Validator::make($request->all(), [
-            'product_id'       => 'required|int',
             'customer_name'    => 'string|max:150',
             'customer_email'   => 'email',
             'activation_limit' => 'int',
