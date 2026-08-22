@@ -425,11 +425,11 @@ class LicenseService
 
     private function normalizeDate(?string $date): ?string
     {
-        if ($date === null || $date === '') {
+        if ($date === null || $date === '' || $date === '0000-00-00' || str_starts_with($date, '0000')) {
             return null;
         }
         $ts = strtotime($date);
-        return $ts === false ? null : date('Y-m-d', $ts);
+        return ($ts === false || $ts <= 0) ? null : date('Y-m-d', $ts);
     }
 
     /**

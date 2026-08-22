@@ -4,7 +4,7 @@
  * ELMS License Server — WHMCS UI Cleanup Hooks
  *
  * Prevents WHMCS from displaying cPanel/Shared Hosting details
- * (Username, Password, Server IP, Nameservers, Control Panel login)
+ * (Username, Password, Server IP, Nameservers, Control Panel login, Hosting Sidebar)
  * for Software License products in both Client Area and Admin Service Area.
  */
 
@@ -13,6 +13,7 @@ if (!defined('WHMCS')) {
 }
 
 use WHMCS\Database\Capsule;
+use WHMCS\View\Menu\Item as MenuItem;
 
 /**
  * Client Area: Clear redundant hosting credentials variables.
@@ -60,6 +61,40 @@ add_hook('ClientAreaPageProductDetails', 1, function ($vars) {
 });
 
 /**
+ * Client Area Secondary Sidebar: Remove any "Hosting Account Details" panel
+ * if the current product is an ELMS License.
+ */
+add_hook('ClientAreaSecondarySidebar', 100, function (MenuItem $secondarySidebar) {
+    $service = Menu::context('service');
+    if (!$service) {
+        return;
+    }
+
+    $isLicense = false;
+    try {
+        $product = Capsule::table('tblhosting')
+            ->join('tblproducts', 'tblhosting.packageid', '=', 'tblproducts.id')
+            ->where('tblhosting.id', $service->id)
+            ->select('tblproducts.servertype')
+            ->first();
+
+        if ($product && $product->servertype === 'elms_license') {
+            $isLicense = true;
+        }
+    } catch (\Throwable $e) {}
+
+    if ($isLicense) {
+        // Remove the 'credentials' box added by custom hosting sidebar hooks
+        if (!is_null($secondarySidebar->getChild('credentials'))) {
+            $secondarySidebar->removeChild('credentials');
+        }
+        if (!is_null($secondarySidebar->getChild('Hosting Account Details'))) {
+            $secondarySidebar->removeChild('Hosting Account Details');
+        }
+    }
+});
+
+/**
  * Client Area Head: Hide default hosting details cards/tabs.
  */
 add_hook('ClientAreaHeadOutput', 1, function ($vars) {
@@ -87,7 +122,8 @@ add_hook('ClientAreaHeadOutput', 1, function ($vars) {
 .product-details .cpanel-login,
 .product-details #tabOverview .row .col-md-6:has(.fa-user),
 .product-details #tabOverview .row .col-md-6:has(.fa-lock),
-.product-details #tabOverview .row .col-md-6:has(.fa-server) {
+.product-details #tabOverview .row .col-md-6:has(.fa-server),
+.hosting-card {
     display: none !important;
 }
 </style>
@@ -110,19 +146,15 @@ add_hook('AdminAreaFooterOutput', 1, function ($vars) {
     return <<<HTML
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if the current service uses ELMS License module
-    var moduleRow = document.querySelector('select[name="servertype"] option[selected], td:contains("ELMS License Server"), strong:contains("License Key")');
     var isElms = document.body.innerHTML.indexOf('elms_license') !== -1 || document.body.innerHTML.indexOf('License Key') !== -1;
 
     if (isElms) {
-        // Hide Username input row
         var userInp = document.querySelector('input[name="username"]');
         if (userInp) {
             var trUser = userInp.closest('tr');
             if (trUser) trUser.style.display = 'none';
         }
 
-        // Hide Password input row
         var passInp = document.querySelector('input[name="password"]');
         if (passInp) {
             var trPass = passInp.closest('tr');

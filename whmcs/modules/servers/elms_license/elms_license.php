@@ -8,14 +8,15 @@
  * your product from the dynamic dropdown!
  *
  * Features:
- * - One-time global API connection (no need to re-enter API keys per product)
+ * - One-time global API connection
  * - Dynamic product selection dropdown
  * - Automatic domain extraction from Custom Fields or WHMCS Domain input
  * - Automatic IP extraction from Custom Fields (only locks IP if provided)
- * - Real-time Client Area & Admin Panel license management
+ * - Real-time Expiry Date synchronization
+ * - Clean UI without raw hosting credentials (username/password)
  *
  * @package    ELMS
- * @version    2.1.0
+ * @version    2.2.0
  */
 
 if (!defined('WHMCS')) {
@@ -169,7 +170,10 @@ function elms_license_CreateAccount(array $params)
     }
 
     $serviceId = (int) $params['serviceid'];
-    $expiry    = $params['model']->nextduedate ?? null;
+    
+    // Normalize Expiry Date (YYYY-MM-DD or null for Lifetime)
+    $rawExpiry = $params['nextduedate'] ?? ($params['model']->nextduedate ?? null);
+    $expiry    = elms_format_whmcs_date($rawExpiry);
 
     // Extract Domain and IP from Custom Fields or standard WHMCS fields
     $domain = elms_extract_domain($params);
@@ -215,16 +219,16 @@ function elms_license_CreateAccount(array $params)
         $licKey  = (string) $res['data']['license_key'];
         $prodKey = (string) ($res['data']['product'] ?? '');
 
-        // Store license key in WHMCS Service credentials
+        // Clear username & password in tblhosting so hosting sidebar hooks don't trigger
         Capsule::table('tblhosting')
             ->where('id', $serviceId)
             ->update([
-                'password' => encrypt($licKey),
-                'username' => $licKey,
-                'domain'   => $domain ?: $params['domain'],
+                'username' => '',
+                'password' => '',
+                'domain'   => $domain ?: ($params['domain'] ?? ''),
             ]);
 
-        // Also track in mod_elms_licenses table
+        // Track in mod_elms_licenses table
         try {
             if (!Capsule::schema()->hasTable('mod_elms_licenses')) {
                 Capsule::schema()->create('mod_elms_licenses', function ($table) {
@@ -233,12 +237,19 @@ function elms_license_CreateAccount(array $params)
                     $table->string('license_key', 64)->nullable()->index();
                     $table->string('product_key', 80)->nullable();
                     $table->string('status', 20)->default('active');
+                    $table->string('expiry_date', 30)->nullable();
                     $table->timestamp('created_at')->nullable();
                 });
             }
             Capsule::table('mod_elms_licenses')->updateOrInsert(
                 ['service_id' => $serviceId],
-                ['license_key' => $licKey, 'product_key' => $prodKey, 'status' => 'active', 'created_at' => date('Y-m-d H:i:s')]
+                [
+                    'license_key'  => $licKey,
+                    'product_key'  => $prodKey,
+                    'status'       => 'active',
+                    'expiry_date'  => $expiry,
+                    'created_at'   => date('Y-m-d H:i:s')
+                ]
             );
         } catch (\Throwable $e) {}
 
@@ -330,15 +341,16 @@ function elms_license_TerminateAccount(array $params)
 }
 
 /**
- * Renew License (Extend Expiry).
+ * Renew License (Extend Expiry on ELMS server).
  */
 function elms_license_Renew(array $params)
 {
     $creds     = elms_server_resolve_credentials($params);
     $licKey    = elms_server_get_license_key($params);
-    $newExpiry = $params['model']->nextduedate ?? null;
+    $rawExpiry = $params['nextduedate'] ?? ($params['model']->nextduedate ?? null);
+    $newExpiry = elms_format_whmcs_date($rawExpiry);
 
-    if ($licKey === '' || $newExpiry === null) {
+    if ($licKey === '') {
         return 'success';
     }
 
@@ -347,7 +359,14 @@ function elms_license_Renew(array $params)
         'expiry_date' => $newExpiry,
     ]);
 
-    return !empty($res['status']) ? 'success' : ('Renew Failed: ' . ($res['message'] ?? 'Unknown Error'));
+    if (!empty($res['status'])) {
+        try {
+            Capsule::table('mod_elms_licenses')->where('license_key', $licKey)->update(['expiry_date' => $newExpiry, 'status' => 'active']);
+        } catch (\Throwable $e) {}
+        return 'success';
+    }
+
+    return 'Renew Failed: ' . ($res['message'] ?? 'Unknown Error');
 }
 
 /**
@@ -432,34 +451,26 @@ function elms_license_ClientArea(array $params)
     $ip     = elms_extract_ip($params);
     $creds  = elms_server_resolve_credentials($params);
 
-    $successMsg = '';
-    $errorMsg   = '';
+    $rawExpiry = $params['nextduedate'] ?? ($params['model']->nextduedate ?? null);
+    $expiryStr = elms_format_whmcs_date($rawExpiry) ?: 'Lifetime / Perpetual';
+    $status    = $params['status'] ?? 'Active';
 
-    // Handle Client Domain Update Submission
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['elms_submit_change_domain'])) {
-        $newDomain = elms_clean_domain((string) ($_POST['elms_new_domain'] ?? ''));
-        if (!empty($newDomain)) {
-            try {
-                // Update WHMCS database
-                Capsule::table('tblhosting')
-                    ->where('id', (int) $params['serviceid'])
-                    ->update(['domain' => $newDomain]);
-
-                // Sync with ELMS server (Reset old activation bindings so new domain works)
-                if (!empty($creds['server_url']) && !empty($licKey)) {
-                    elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/reset', [
-                        'license_key' => $licKey,
-                    ]);
+    // Live sync check with ELMS server
+    if (!empty($licKey) && !empty($creds['server_url'])) {
+        try {
+            $check = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/verify', [
+                'license_key' => $licKey,
+                'domain'      => $domain ?: null,
+            ]);
+            if (!empty($check['data'])) {
+                if (!empty($check['data']['expiry'])) {
+                    $expiryStr = $check['data']['expiry'];
                 }
-
-                $domain = $newDomain;
-                $successMsg = 'Domain updated to ' . htmlspecialchars($newDomain) . ' successfully! Your license is now ready to activate on the new domain.';
-            } catch (\Throwable $e) {
-                $errorMsg = 'Failed to update domain: ' . $e->getMessage();
+                if (!empty($check['data']['status'])) {
+                    $status = ucfirst((string) $check['data']['status']);
+                }
             }
-        } else {
-            $errorMsg = 'Please provide a valid domain name.';
-        }
+        } catch (\Throwable $e) {}
     }
 
     return [
@@ -468,27 +479,40 @@ function elms_license_ClientArea(array $params)
             'license_key'     => $licKey,
             'domain'          => $domain,
             'ip_address'      => $ip,
-            'service_status'  => $params['status'] ?? 'Active',
-            'nextduedate'     => $params['nextduedate'] ?? 'Perpetual',
+            'service_status'  => $status,
+            'nextduedate'     => $expiryStr,
             'server_url'      => $creds['server_url'],
             'product_name'    => $params['package'] ?? 'Software License',
             'product_key'     => (string) ($params['configoption1'] ?? ($params['package'] ?? '')),
-            'elms_success_msg'=> $successMsg,
-            'elms_error_msg'  => $errorMsg,
         ],
     ];
 }
 
 // ---------------------------------------------------------------------------
-// Smart Helpers: One-Time Global Credentials & Custom Field Resolvers
+// Smart Helpers: Date Normalization, Credentials & Custom Field Resolvers
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve server URL, API Key, and Secret from:
- * 1. Product specific overrides ($params['configoption5'], configoption6, configoption7)
- * 2. WHMCS Server Configuration ($params['serverhostname'], serverusername, serverpassword)
- * 3. WHMCS Addon Module settings (tbladdonmodules)
- * 4. tblservers table (where type = 'elms_license')
+ * Convert WHMCS date into YYYY-MM-DD or null (for Lifetime/0000-00-00).
+ */
+function elms_format_whmcs_date($date): ?string
+{
+    if (empty($date)) {
+        return null;
+    }
+    if ($date instanceof \DateTimeInterface) {
+        return $date->format('Y-m-d');
+    }
+    $str = trim((string) $date);
+    if ($str === '' || $str === '0000-00-00' || $str === '00/00/0000' || str_starts_with($str, '0000')) {
+        return null;
+    }
+    $ts = strtotime($str);
+    return ($ts !== false && $ts > 0) ? date('Y-m-d', $ts) : null;
+}
+
+/**
+ * Resolve server URL, API Key, and Secret.
  *
  * @param array<string,mixed> $params
  * @return array{server_url:string,api_key:string,api_secret:string}
@@ -551,10 +575,7 @@ function elms_server_resolve_credentials(array $params = []): array
 }
 
 /**
- * Extract Domain name from:
- * 1. Custom Fields: 'domain', 'Domain Name', 'Domain', 'Website', 'URL', 'Host'
- * 2. Configurable Options: 'domain'
- * 3. WHMCS Native $params['domain']
+ * Extract Domain name.
  */
 function elms_extract_domain(array $params): string
 {
@@ -574,9 +595,7 @@ function elms_extract_domain(array $params): string
 }
 
 /**
- * Extract IP Address from:
- * 1. Custom Fields: 'ip', 'IP Address', 'Server IP', 'IPAddress', 'ServerIP'
- * 2. Dedicated IP: $params['dedicatedip']
+ * Extract IP Address.
  */
 function elms_extract_ip(array $params): string
 {
@@ -605,25 +624,38 @@ function elms_clean_domain(string $domain): string
 
 function elms_server_get_license_key(array $params): string
 {
-    $key = '';
-    if (!empty($params['password'])) {
-        $decrypted = decrypt($params['password']);
-        if (!empty($decrypted)) {
-            $key = $decrypted;
-        }
-    }
-    if ($key === '' && !empty($params['username'])) {
-        $key = $params['username'];
-    }
-    if ($key === '' && !empty($params['serviceid'])) {
+    $serviceId = (int) ($params['serviceid'] ?? ($params['id'] ?? 0));
+    
+    // 1. Check mod_elms_licenses table
+    if ($serviceId > 0) {
         try {
-            $row = Capsule::table('mod_elms_licenses')->where('service_id', (int) $params['serviceid'])->first();
+            $row = Capsule::table('mod_elms_licenses')->where('service_id', $serviceId)->first();
             if ($row && !empty($row->license_key)) {
-                $key = $row->license_key;
+                return trim((string) $row->license_key);
             }
         } catch (\Throwable $e) {}
     }
-    return trim($key);
+
+    // 2. Check Custom Fields
+    $customFields = $params['customfields'] ?? [];
+    foreach ($customFields as $k => $v) {
+        if (stripos((string) $k, 'license') !== false && !empty($v)) {
+            return trim((string) $v);
+        }
+    }
+
+    // 3. Fallback to password/username for legacy records
+    if (!empty($params['password'])) {
+        $decrypted = decrypt($params['password']);
+        if (!empty($decrypted)) {
+            return trim((string) $decrypted);
+        }
+    }
+    if (!empty($params['username'])) {
+        return trim((string) $params['username']);
+    }
+
+    return '';
 }
 
 function elms_server_sync_custom_field(int $serviceId, int $packageId, string $licenseKey): void
@@ -668,7 +700,7 @@ function elms_server_api_call(string $baseUrl, string $apiKey, string $apiSecret
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => 0,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-WHMCS-Provisioner/2.1',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-WHMCS-Provisioner/2.2',
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
             'X-Api-Key: ' . $apiKey,
