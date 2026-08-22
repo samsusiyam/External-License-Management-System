@@ -267,3 +267,40 @@ function elms_change_status(array $params, string $action): void
 
     logActivity('ELMS: ' . ucfirst($action) . ' service #' . $serviceId . ' -> ' . ($res['message'] ?? 'no response'));
 }
+
+add_hook('ClientAreaPageProductDetails', 1, function ($vars) {
+    $serviceId = (int) ($vars['id'] ?? ($vars['serviceid'] ?? 0));
+    if ($serviceId <= 0) {
+        return;
+    }
+
+    $isLicenseProduct = false;
+    $serverType = $vars['servertype'] ?? ($vars['module'] ?? '');
+
+    if ($serverType === 'elms_license') {
+        $isLicenseProduct = true;
+    } else {
+        try {
+            $hasElms = Capsule::table('mod_elms_licenses')->where('service_id', $serviceId)->exists();
+            if ($hasElms) {
+                $isLicenseProduct = true;
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    if ($isLicenseProduct) {
+        return [
+            'username'            => '',
+            'password'            => '',
+            'serverdata'          => null,
+            'serverip'            => '',
+            'hostname'            => '',
+            'ns1'                 => '',
+            'ns2'                 => '',
+            'ns3'                 => '',
+            'ns4'                 => '',
+            'displayAccountLogin' => false,
+            'showAccountDetails'  => false,
+        ];
+    }
+});

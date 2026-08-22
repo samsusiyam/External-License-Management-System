@@ -429,17 +429,49 @@ function elms_license_ClientArea(array $params)
     $ip     = elms_extract_ip($params);
     $creds  = elms_server_resolve_credentials($params);
 
+    $successMsg = '';
+    $errorMsg   = '';
+
+    // Handle Client Domain Update Submission
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['elms_submit_change_domain'])) {
+        $newDomain = elms_clean_domain((string) ($_POST['elms_new_domain'] ?? ''));
+        if (!empty($newDomain)) {
+            try {
+                // Update WHMCS database
+                Capsule::table('tblhosting')
+                    ->where('id', (int) $params['serviceid'])
+                    ->update(['domain' => $newDomain]);
+
+                // Sync with ELMS server (Reset old activation bindings so new domain works)
+                if (!empty($creds['server_url']) && !empty($licKey)) {
+                    elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/reset', [
+                        'license_key' => $licKey,
+                    ]);
+                }
+
+                $domain = $newDomain;
+                $successMsg = 'Domain updated to ' . htmlspecialchars($newDomain) . ' successfully! Your license is now ready to activate on the new domain.';
+            } catch (\Throwable $e) {
+                $errorMsg = 'Failed to update domain: ' . $e->getMessage();
+            }
+        } else {
+            $errorMsg = 'Please provide a valid domain name.';
+        }
+    }
+
     return [
         'tabOverviewReplacementTemplate' => 'clientarea.tpl',
         'templateVariables' => [
-            'license_key'   => $licKey,
-            'domain'        => $domain,
-            'ip_address'    => $ip,
-            'service_status'=> $params['status'] ?? 'Active',
-            'nextduedate'   => $params['nextduedate'] ?? 'Perpetual',
-            'server_url'    => $creds['server_url'],
-            'product_name'  => $params['package'] ?? 'Software License',
-            'product_key'   => (string) ($params['configoption1'] ?? ($params['package'] ?? '')),
+            'license_key'     => $licKey,
+            'domain'          => $domain,
+            'ip_address'      => $ip,
+            'service_status'  => $params['status'] ?? 'Active',
+            'nextduedate'     => $params['nextduedate'] ?? 'Perpetual',
+            'server_url'      => $creds['server_url'],
+            'product_name'    => $params['package'] ?? 'Software License',
+            'product_key'     => (string) ($params['configoption1'] ?? ($params['package'] ?? '')),
+            'elms_success_msg'=> $successMsg,
+            'elms_error_msg'  => $errorMsg,
         ],
     ];
 }
