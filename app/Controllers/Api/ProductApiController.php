@@ -27,6 +27,8 @@ class ProductApiController extends ApiController
             'product_name'   => $p['product_name'],
             'product_key'    => $p['product_key'],
             'latest_version' => $p['latest_version'] ?? null,
+            'download_url'   => $p['download_url'] ?? null,
+            'update_notes'   => $p['update_notes'] ?? null,
             'description'    => $p['description'] ?? null,
         ], $rows);
 

@@ -146,6 +146,7 @@ class LicenseService
         }
         /** @var array<string,mixed> $license */
         $license = $check['data']['license'];
+        $product = $this->products->find((int) $license['product_id']);
 
         return $this->ok('License Valid', [
             'license_key'      => $license['license_key'],
@@ -153,6 +154,11 @@ class LicenseService
             'expiry'           => $license['expiry_date'],
             'activation_limit' => (int) $license['activation_limit'],
             'activation_count' => (int) $license['activation_count'],
+            'product_name'     => $product['product_name'] ?? null,
+            'product_key'      => $product['product_key'] ?? null,
+            'latest_version'   => $product['latest_version'] ?? null,
+            'download_url'     => $product['download_url'] ?? null,
+            'update_notes'     => $product['update_notes'] ?? null,
         ]);
     }
 

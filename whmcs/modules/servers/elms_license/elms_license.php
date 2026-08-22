@@ -433,6 +433,10 @@ function elms_license_ClientArea(array $params)
     $rawExpiry = $params['nextduedate'] ?? ($params['model']->nextduedate ?? null);
     $expiryStr = elms_format_whmcs_date($rawExpiry) ?: 'Lifetime / Perpetual';
     $status    = $params['status'] ?? 'Active';
+    $latestVer = '';
+    $downloadUrl = '';
+    $updateNotes = '';
+    $productName = $params['package'] ?? 'Software License';
 
     // Live sync check with ELMS server
     if (!empty($licKey) && !empty($creds['server_url'])) {
@@ -448,6 +452,18 @@ function elms_license_ClientArea(array $params)
                 if (!empty($check['data']['status'])) {
                     $status = ucfirst((string) $check['data']['status']);
                 }
+                if (!empty($check['data']['latest_version'])) {
+                    $latestVer = (string) $check['data']['latest_version'];
+                }
+                if (!empty($check['data']['download_url'])) {
+                    $downloadUrl = (string) $check['data']['download_url'];
+                }
+                if (!empty($check['data']['update_notes'])) {
+                    $updateNotes = (string) $check['data']['update_notes'];
+                }
+                if (!empty($check['data']['product_name'])) {
+                    $productName = (string) $check['data']['product_name'];
+                }
             }
         } catch (\Throwable $e) {}
     }
@@ -461,8 +477,11 @@ function elms_license_ClientArea(array $params)
             'service_status'  => $status,
             'nextduedate'     => $expiryStr,
             'server_url'      => $creds['server_url'],
-            'product_name'    => $params['package'] ?? 'Software License',
+            'product_name'    => $productName,
             'product_key'     => (string) ($params['configoption1'] ?? ($params['package'] ?? '')),
+            'latest_version'  => $latestVer,
+            'download_url'    => $downloadUrl,
+            'update_notes'    => $updateNotes,
         ],
     ];
 }
