@@ -84,6 +84,56 @@ class LicenseService
     }
 
     /**
+     * Update an existing license.
+     *
+     * @param int $id
+     * @param array<string,mixed> $data
+     * @return array{status:bool,message:string,data:array<string,mixed>}
+     */
+    public function update(int $id, array $data): array
+    {
+        $license = $this->licenses->find($id);
+        if ($license === null) {
+            return $this->fail('License not found');
+        }
+
+        $productId = isset($data['product_id']) ? (int) $data['product_id'] : (int) $license['product_id'];
+        $product = $this->products->find($productId);
+        if ($product === null) {
+            return $this->fail('Invalid product');
+        }
+
+        $domain = array_key_exists('domain', $data) ? ($data['domain'] !== '' ? trim((string) $data['domain']) : null) : $license['domain'];
+        $ip = array_key_exists('ip_address', $data) ? ($data['ip_address'] !== '' ? trim((string) $data['ip_address']) : null) : $license['ip_address'];
+
+        $fields = [
+            'product_id'       => $productId,
+            'customer_name'    => $data['customer_name'] ?? $license['customer_name'],
+            'customer_email'   => $data['customer_email'] ?? $license['customer_email'],
+            'domain'           => $domain,
+            'ip_address'       => $ip,
+            'activation_limit' => isset($data['activation_limit']) ? max(1, (int) $data['activation_limit']) : (int) $license['activation_limit'],
+            'domain_lock'      => isset($data['domain_lock']) ? (!empty($data['domain_lock']) ? 1 : 0) : 0,
+            'ip_lock'          => isset($data['ip_lock']) ? (!empty($data['ip_lock']) ? 1 : 0) : 0,
+            'expiry_date'      => array_key_exists('expiry_date', $data) ? $this->normalizeDate($data['expiry_date']) : $license['expiry_date'],
+            'status'           => in_array($data['status'] ?? '', ['active', 'suspended', 'expired', 'terminated'], true) ? $data['status'] : $license['status'],
+            'notes'            => $data['notes'] ?? $license['notes'],
+        ];
+
+        $this->licenses->updateById($id, $fields);
+
+        AuditService::log('license.updated', 'admin', null, 'license', (string) $id, [
+            'license_key' => $license['license_key'],
+            'changes'     => array_diff_assoc($fields, $license),
+        ]);
+
+        return $this->ok('License updated successfully', [
+            'license_id'  => $id,
+            'license_key' => $license['license_key'],
+        ]);
+    }
+
+    /**
      * Verify a license without registering an activation.
      *
      * @return array{status:bool,message:string,data:array<string,mixed>}

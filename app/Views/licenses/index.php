@@ -70,10 +70,13 @@ $statusBadge = static function (string $s): string {
                     <td><span class="badge text-bg-<?= $statusBadge($l['status']) ?>"><?= View::e($l['status']) ?></span></td>
                     <td class="small"><?= View::e($l['expiry_date'] ?? 'Never') ?></td>
                     <td class="text-end text-nowrap">
-                        <a href="<?= $base ?>/admin/licenses/<?= (int) $l['id'] ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                        <a href="<?= $base ?>/admin/licenses/<?= (int) $l['id'] ?>" class="btn btn-sm btn-outline-secondary" title="View Details"><i class="bi bi-eye"></i></a>
+                        <a href="<?= $base ?>/admin/licenses/<?= (int) $l['id'] ?>/edit" class="btn btn-sm btn-outline-primary" title="Edit License"><i class="bi bi-pencil"></i></a>
                         <div class="btn-group">
                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-gear"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="<?= $base ?>/admin/licenses/<?= (int) $l['id'] ?>/edit"><i class="bi bi-pencil me-2"></i>Edit License</a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <?php if ($l['status'] === 'active'): ?>
                                     <li><a class="dropdown-item elms-action" data-action="suspend" data-id="<?= (int) $l['id'] ?>" href="#">Suspend</a></li>
                                 <?php elseif ($l['status'] === 'suspended'): ?>

@@ -11,7 +11,10 @@ $statusBadge = static fn(string $s): string => match ($s) {
 ?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0">License Detail</h1>
-    <a href="<?= $base ?>/admin/licenses" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    <div class="d-flex gap-2">
+        <a href="<?= $base ?>/admin/licenses/<?= (int) $license['id'] ?>/edit" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit License</a>
+        <a href="<?= $base ?>/admin/licenses" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
 </div>
 
 <div class="row g-3">

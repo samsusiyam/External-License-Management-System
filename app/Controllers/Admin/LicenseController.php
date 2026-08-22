@@ -96,6 +96,54 @@ class LicenseController extends Controller
         $this->redirect('/admin/licenses/create');
     }
 
+    public function editForm(Request $request, array $params): void
+    {
+        $id = (int) ($params['id'] ?? 0);
+        $license = $this->licenses->find($id);
+        if ($license === null) {
+            $this->flash('error', 'License not found.');
+            $this->redirect('/admin/licenses');
+        }
+
+        $this->view('licenses/form', [
+            'title'    => 'Edit License #' . $id,
+            'license'  => $license,
+            'products' => (new Product())->all('product_name ASC'),
+            'csrf'     => Csrf::token(),
+            'flash'    => self::pullFlash(),
+        ]);
+    }
+
+    public function update(Request $request, array $params): void
+    {
+        $id = (int) ($params['id'] ?? 0);
+        $this->guardCsrf($request, '/admin/licenses/' . $id . '/edit');
+
+        $v = Validator::make($request->all(), [
+            'product_id'       => 'required|int',
+            'customer_name'    => 'string|max:150',
+            'customer_email'   => 'email',
+            'domain'           => 'string|max:190',
+            'ip_address'       => 'string|max:45',
+            'activation_limit' => 'int',
+            'expiry_date'      => 'date',
+        ]);
+        if ($v->fails()) {
+            $this->flash('error', $v->firstError());
+            $this->redirect('/admin/licenses/' . $id . '/edit');
+        }
+
+        $result = $this->service->update($id, $request->all());
+        if ($result['status']) {
+            AuditService::admin('license.updated_admin', $result['data'], 'license', (string) $id);
+            $this->flash('success', 'License #' . $id . ' updated successfully.');
+            $this->redirect('/admin/licenses/' . $id);
+        }
+
+        $this->flash('error', $result['message']);
+        $this->redirect('/admin/licenses/' . $id . '/edit');
+    }
+
     public function show(Request $request, array $params): void
     {
         $license = $this->licenses->find((int) ($params['id'] ?? 0));

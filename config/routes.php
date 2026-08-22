@@ -73,10 +73,12 @@ $router->post('/admin/products/{id}/update', 'App\Controllers\Admin\ProductContr
 $router->post('/admin/products/{id}/delete', 'App\Controllers\Admin\ProductController@delete', $auth);
 
 // Licenses
-$router->get('/admin/licenses',            'App\Controllers\Admin\LicenseController@index', $auth);
-$router->get('/admin/licenses/create',     'App\Controllers\Admin\LicenseController@createForm', $auth);
-$router->post('/admin/licenses',           'App\Controllers\Admin\LicenseController@store', $auth);
-$router->get('/admin/licenses/{id}',       'App\Controllers\Admin\LicenseController@show', $auth);
+$router->get('/admin/licenses',              'App\Controllers\Admin\LicenseController@index', $auth);
+$router->get('/admin/licenses/create',       'App\Controllers\Admin\LicenseController@createForm', $auth);
+$router->post('/admin/licenses',             'App\Controllers\Admin\LicenseController@store', $auth);
+$router->get('/admin/licenses/{id}/edit',    'App\Controllers\Admin\LicenseController@editForm', $auth);
+$router->post('/admin/licenses/{id}/update', 'App\Controllers\Admin\LicenseController@update', $auth);
+$router->get('/admin/licenses/{id}',         'App\Controllers\Admin\LicenseController@show', $auth);
 $router->post('/admin/licenses/{id}/{action}', 'App\Controllers\Admin\LicenseController@action', $auth);
 
 // API keys
