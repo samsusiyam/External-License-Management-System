@@ -183,7 +183,16 @@ function elms_license_CreateAccount(array $params)
         'reuse_existing'   => 1,
     ];
 
-    if ($selectedProduct !== '0' && $selectedProduct !== '') {
+    // Parse & clean selected product string (handles WHMCS raw "KEY|Label" format)
+    if (strpos($selectedProduct, '|') !== false) {
+        $parts = explode('|', $selectedProduct, 2);
+        $selectedProduct = trim($parts[0]);
+    }
+    if (preg_match('/\(([^)]+)\)$/', $selectedProduct, $matches)) {
+        $selectedProduct = trim($matches[1]);
+    }
+
+    if ($selectedProduct !== '0' && $selectedProduct !== '' && strtolower($selectedProduct) !== 'auto-match by whmcs product name') {
         if (is_numeric($selectedProduct)) {
             $payload['product_id'] = (int) $selectedProduct;
         } else {
