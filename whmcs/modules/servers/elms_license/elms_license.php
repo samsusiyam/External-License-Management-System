@@ -409,14 +409,17 @@ function elms_license_AdminServicesTabFields(array $params)
     $licKey = elms_server_get_license_key($params);
     $domain = elms_extract_domain($params);
     $ip     = elms_extract_ip($params);
-    $creds  = elms_server_resolve_credentials($params);
 
-    return [
-        'License Key' => '<strong style="font-family:monospace; font-size:14px; color:#1e293b; background:#f1f5f9; padding:4px 8px; border-radius:4px;">' . htmlspecialchars($licKey ?: 'Not Generated Yet') . '</strong>',
+    $fields = [
+        'License Key' => '<strong style="font-family:monospace; font-size:15px; color:#0f172a; background:#f8fafc; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; letter-spacing:0.5px;">' . htmlspecialchars($licKey ?: 'Not Generated Yet') . '</strong>',
         'Bound Domain' => htmlspecialchars($domain ?: 'Any Domain'),
-        'Bound IP Address' => htmlspecialchars($ip ?: 'Any IP'),
-        'License Server' => htmlspecialchars($creds['server_url'] ?: 'Not Configured'),
     ];
+
+    if (!empty($ip)) {
+        $fields['Bound IP Address'] = htmlspecialchars($ip);
+    }
+
+    return $fields;
 }
 
 /**
