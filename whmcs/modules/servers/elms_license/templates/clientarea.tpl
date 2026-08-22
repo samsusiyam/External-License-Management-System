@@ -1,348 +1,297 @@
 <div class="elms-license-wrapper mb-4" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
     <style>
-        /* Light Theme (Default) */
+        /* -------------------------------------------------------------
+           LIGHT MODE (Default - Clean White & Slate SaaS Style)
+        ------------------------------------------------------------- */
         .elms-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-            overflow: hidden;
-            color: #0f172a;
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+            overflow: hidden !important;
+            color: #0f172a !important;
         }
         .elms-header {
-            background: #ffffff;
-            border-bottom: 1px solid #f1f5f9;
-            padding: 18px 24px;
+            background: #ffffff !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            padding: 18px 24px !important;
         }
         .elms-title {
-            color: #0f172a;
-            font-size: 1.15rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 0;
+            color: #0f172a !important;
+            font-size: 1.125rem !important;
+            font-weight: 700 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            margin: 0 !important;
         }
         .elms-version-badge {
-            background: #f1f5f9;
-            color: #334155;
-            border: 1px solid #cbd5e1;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 16px;
-            letter-spacing: 0.3px;
-            display: inline-flex;
-            align-items: center;
+            background: #f1f5f9 !important;
+            color: #334155 !important;
+            border: 1px solid #cbd5e1 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            padding: 3px 9px !important;
+            border-radius: 14px !important;
+            letter-spacing: 0.3px !important;
+            display: inline-flex !important;
+            align-items: center !important;
         }
         .elms-status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 5px 14px;
-            border-radius: 20px;
-            letter-spacing: 0.3px;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            padding: 4px 12px !important;
+            border-radius: 20px !important;
+            letter-spacing: 0.3px !important;
         }
         .elms-status-active {
-            background: #ecfdf5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
+            background: #ecfdf5 !important;
+            color: #047857 !important;
+            border: 1px solid #a7f3d0 !important;
         }
         .elms-status-suspended {
-            background: #fefce8;
-            color: #854d0e;
-            border: 1px solid #fef08a;
+            background: #fefce8 !important;
+            color: #854d0e !important;
+            border: 1px solid #fef08a !important;
         }
         .elms-status-expired {
-            background: #fff7ed;
-            color: #9a3412;
-            border: 1px solid #fed7aa;
+            background: #fff7ed !important;
+            color: #9a3412 !important;
+            border: 1px solid #fed7aa !important;
         }
         .elms-status-terminated {
-            background: #fef2f2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
+            background: #fef2f2 !important;
+            color: #991b1b !important;
+            border: 1px solid #fecaca !important;
         }
         .elms-status-pending {
-            background: #f8fafc;
-            color: #475569;
-            border: 1px solid #e2e8f0;
+            background: #f8fafc !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0 !important;
         }
         .elms-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
+            width: 8px !important;
+            height: 8px !important;
+            border-radius: 50% !important;
+            display: inline-block !important;
         }
-        .elms-status-active .elms-dot { background: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25); }
-        .elms-status-suspended .elms-dot { background: #eab308; }
-        .elms-status-expired .elms-dot { background: #ea580c; }
-        .elms-status-terminated .elms-dot { background: #ef4444; }
-        .elms-status-pending .elms-dot { background: #94a3b8; }
+        .elms-status-active .elms-dot { background: #10b981 !important; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25) !important; }
+        .elms-status-suspended .elms-dot { background: #eab308 !important; }
+        .elms-status-expired .elms-dot { background: #ea580c !important; }
+        .elms-status-terminated .elms-dot { background: #ef4444 !important; }
+        .elms-status-pending .elms-dot { background: #94a3b8 !important; }
 
+        /* Dark High-Contrast Developer Key Box (Stripe/GitHub style) */
         .elms-key-box {
-            background: #0f172a;
-            color: #ffffff;
-            border-radius: 10px;
-            padding: 18px 22px;
-            border: 1px solid #334155;
+            background: #0f172a !important;
+            color: #ffffff !important;
+            border-radius: 10px !important;
+            padding: 18px 22px !important;
+            border: 1px solid #1e293b !important;
         }
         .elms-key-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            margin-bottom: 6px;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            letter-spacing: 1px !important;
+            color: #94a3b8 !important;
+            text-transform: uppercase !important;
+            margin-bottom: 6px !important;
         }
         .elms-key-value {
-            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-            font-size: 1.15rem;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            color: #38bdf8;
-            word-break: break-all;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+            font-size: 1.2rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 1.2px !important;
+            color: #38bdf8 !important;
+            word-break: break-all !important;
         }
         .elms-copy-btn {
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.12) !important;
             color: #ffffff !important;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            padding: 7px 16px;
-            font-size: 12px;
-            font-weight: 600;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            padding: 7px 16px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            transition: all 0.2s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
             text-decoration: none !important;
         }
         .elms-copy-btn:hover {
-            background: rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.22) !important;
             color: #ffffff !important;
         }
         .elms-copy-btn.copied {
             background: #10b981 !important;
             border-color: #10b981 !important;
             color: #ffffff !important;
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;
         }
 
+        /* Property Sub-Cards in Light Mode */
         .elms-prop-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 14px 16px;
-            height: 100%;
-            transition: border-color 0.2s ease;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            padding: 14px 18px !important;
+            height: 100% !important;
+            transition: border-color 0.2s ease !important;
         }
         .elms-prop-card:hover {
-            border-color: #cbd5e1;
+            border-color: #cbd5e1 !important;
         }
         .elms-prop-title {
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 500;
-            margin-bottom: 4px;
+            font-size: 12px !important;
+            color: #64748b !important;
+            font-weight: 500 !important;
+            margin-bottom: 4px !important;
         }
         .elms-prop-val {
-            font-size: 14px;
-            font-weight: 600;
-            color: #0f172a;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
         }
 
+        /* Download Section in Light Mode */
         .elms-download-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 16px 20px;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            padding: 18px 22px !important;
         }
         .elms-dl-btn {
-            background: #0284c7;
+            background: #0284c7 !important;
             color: #ffffff !important;
-            font-size: 13px;
-            font-weight: 600;
-            padding: 9px 20px;
-            border-radius: 6px;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 9px 20px !important;
+            border-radius: 6px !important;
             text-decoration: none !important;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-            border: 1px solid #0284c7;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            transition: all 0.2s ease !important;
+            border: 1px solid #0284c7 !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
         }
         .elms-dl-btn:hover {
-            background: #0369a1;
-            border-color: #0369a1;
+            background: #0369a1 !important;
+            border-color: #0369a1 !important;
             color: #ffffff !important;
             text-decoration: none !important;
         }
         .elms-notes-box {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            color: #475569;
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+            padding: 14px 18px !important;
+            border-radius: 8px !important;
         }
 
         /* -------------------------------------------------------------
-           Dark Mode Support (Automatic via Media Query & Theme Selectors)
+           DARK MODE (Applied ONLY when WHMCS Theme has Dark Mode Active)
         ------------------------------------------------------------- */
-        @media (prefers-color-scheme: dark) {
-            .elms-card {
-                background: #1e293b;
-                border-color: #334155;
-                color: #f8fafc;
-            }
-            .elms-header {
-                background: #1e293b;
-                border-color: #334155;
-            }
-            .elms-title {
-                color: #f8fafc;
-            }
-            .elms-version-badge {
-                background: #334155;
-                color: #93c5fd;
-                border-color: #475569;
-            }
-            .elms-status-active {
-                background: rgba(16, 185, 129, 0.15);
-                color: #34d399;
-                border-color: rgba(16, 185, 129, 0.3);
-            }
-            .elms-status-suspended {
-                background: rgba(234, 179, 8, 0.15);
-                color: #fde047;
-                border-color: rgba(234, 179, 8, 0.3);
-            }
-            .elms-status-expired {
-                background: rgba(234, 88, 12, 0.15);
-                color: #fb923c;
-                border-color: rgba(234, 88, 12, 0.3);
-            }
-            .elms-status-terminated {
-                background: rgba(239, 68, 68, 0.15);
-                color: #f87171;
-                border-color: rgba(239, 68, 68, 0.3);
-            }
-            .elms-status-pending {
-                background: rgba(148, 163, 184, 0.15);
-                color: #cbd5e1;
-                border-color: rgba(148, 163, 184, 0.3);
-            }
-            .elms-prop-card {
-                background: #0f172a;
-                border-color: #334155;
-            }
-            .elms-prop-card:hover {
-                border-color: #475569;
-            }
-            .elms-prop-title {
-                color: #94a3b8;
-            }
-            .elms-prop-val {
-                color: #f8fafc;
-            }
-            .elms-download-card {
-                background: #0f172a;
-                border-color: #334155;
-            }
-            .elms-notes-box {
-                background: #0f172a !important;
-                border-color: #334155 !important;
-                color: #cbd5e1 !important;
-            }
-        }
-
-        /* WHMCS Dark Theme Classes (Twenty-One dark, Lagom dark, etc.) */
-        body.dark-theme .elms-card,
-        body.dark-mode .elms-card,
         body.theme-dark .elms-card,
+        html.theme-dark .elms-card,
+        body.dark-mode .elms-card,
+        body.dark-theme .elms-card,
         body.dark .elms-card,
         [data-theme="dark"] .elms-card,
-        [data-bs-theme="dark"] .elms-card,
-        .theme-dark .elms-card {
+        [data-scheme="dark"] .elms-card,
+        [data-bs-theme="dark"] .elms-card {
             background: #1e293b !important;
             border-color: #334155 !important;
             color: #f8fafc !important;
         }
-        body.dark-theme .elms-header,
-        body.dark-mode .elms-header,
         body.theme-dark .elms-header,
+        html.theme-dark .elms-header,
+        body.dark-mode .elms-header,
+        body.dark-theme .elms-header,
         body.dark .elms-header,
         [data-theme="dark"] .elms-header,
-        [data-bs-theme="dark"] .elms-header,
-        .theme-dark .elms-header {
+        [data-scheme="dark"] .elms-header,
+        [data-bs-theme="dark"] .elms-header {
             background: #1e293b !important;
             border-color: #334155 !important;
         }
-        body.dark-theme .elms-title,
-        body.dark-mode .elms-title,
         body.theme-dark .elms-title,
+        html.theme-dark .elms-title,
+        body.dark-mode .elms-title,
+        body.dark-theme .elms-title,
         body.dark .elms-title,
         [data-theme="dark"] .elms-title,
-        [data-bs-theme="dark"] .elms-title,
-        .theme-dark .elms-title {
+        [data-scheme="dark"] .elms-title,
+        [data-bs-theme="dark"] .elms-title {
             color: #f8fafc !important;
         }
-        body.dark-theme .elms-version-badge,
-        body.dark-mode .elms-version-badge,
         body.theme-dark .elms-version-badge,
+        html.theme-dark .elms-version-badge,
+        body.dark-mode .elms-version-badge,
+        body.dark-theme .elms-version-badge,
         body.dark .elms-version-badge,
         [data-theme="dark"] .elms-version-badge,
-        [data-bs-theme="dark"] .elms-version-badge,
-        .theme-dark .elms-version-badge {
+        [data-scheme="dark"] .elms-version-badge,
+        [data-bs-theme="dark"] .elms-version-badge {
             background: #334155 !important;
             color: #93c5fd !important;
             border-color: #475569 !important;
         }
-        body.dark-theme .elms-prop-card,
-        body.dark-mode .elms-prop-card,
         body.theme-dark .elms-prop-card,
+        html.theme-dark .elms-prop-card,
+        body.dark-mode .elms-prop-card,
+        body.dark-theme .elms-prop-card,
         body.dark .elms-prop-card,
         [data-theme="dark"] .elms-prop-card,
-        [data-bs-theme="dark"] .elms-prop-card,
-        .theme-dark .elms-prop-card {
+        [data-scheme="dark"] .elms-prop-card,
+        [data-bs-theme="dark"] .elms-prop-card {
             background: #0f172a !important;
             border-color: #334155 !important;
         }
-        body.dark-theme .elms-prop-title,
-        body.dark-mode .elms-prop-title,
         body.theme-dark .elms-prop-title,
+        html.theme-dark .elms-prop-title,
+        body.dark-mode .elms-prop-title,
+        body.dark-theme .elms-prop-title,
         body.dark .elms-prop-title,
         [data-theme="dark"] .elms-prop-title,
-        [data-bs-theme="dark"] .elms-prop-title,
-        .theme-dark .elms-prop-title {
+        [data-scheme="dark"] .elms-prop-title,
+        [data-bs-theme="dark"] .elms-prop-title {
             color: #94a3b8 !important;
         }
-        body.dark-theme .elms-prop-val,
-        body.dark-mode .elms-prop-val,
         body.theme-dark .elms-prop-val,
+        html.theme-dark .elms-prop-val,
+        body.dark-mode .elms-prop-val,
+        body.dark-theme .elms-prop-val,
         body.dark .elms-prop-val,
         [data-theme="dark"] .elms-prop-val,
-        [data-bs-theme="dark"] .elms-prop-val,
-        .theme-dark .elms-prop-val {
+        [data-scheme="dark"] .elms-prop-val,
+        [data-bs-theme="dark"] .elms-prop-val {
             color: #f8fafc !important;
         }
-        body.dark-theme .elms-download-card,
-        body.dark-mode .elms-download-card,
         body.theme-dark .elms-download-card,
+        html.theme-dark .elms-download-card,
+        body.dark-mode .elms-download-card,
+        body.dark-theme .elms-download-card,
         body.dark .elms-download-card,
         [data-theme="dark"] .elms-download-card,
-        [data-bs-theme="dark"] .elms-download-card,
-        .theme-dark .elms-download-card {
+        [data-scheme="dark"] .elms-download-card,
+        [data-bs-theme="dark"] .elms-download-card {
             background: #0f172a !important;
             border-color: #334155 !important;
         }
-        body.dark-theme .elms-notes-box,
-        body.dark-mode .elms-notes-box,
         body.theme-dark .elms-notes-box,
+        html.theme-dark .elms-notes-box,
+        body.dark-mode .elms-notes-box,
+        body.dark-theme .elms-notes-box,
         body.dark .elms-notes-box,
         [data-theme="dark"] .elms-notes-box,
-        [data-bs-theme="dark"] .elms-notes-box,
-        .theme-dark .elms-notes-box {
+        [data-scheme="dark"] .elms-notes-box,
+        [data-bs-theme="dark"] .elms-notes-box {
             background: #0f172a !important;
             border-color: #334155 !important;
             color: #cbd5e1 !important;
@@ -350,7 +299,7 @@
     </style>
 
     <div class="elms-card">
-        <!-- Modern Card Header (Version badge aligned with Status on the right) -->
+        <!-- Card Header with version badge next to status on the right -->
         <div class="elms-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h4 class="elms-title">
                 <i class="fas fa-shield-alt text-primary"></i> Software License Details
@@ -395,7 +344,7 @@
                 </div>
             </div>
 
-            <!-- Modern Properties Grid -->
+            <!-- Properties Grid -->
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="elms-prop-card">
@@ -462,7 +411,7 @@
             </div>
 
             <!-- Software Package & Download Action Bar -->
-            <div class="mt-4 pt-3 border-top" style="border-color: rgba(226, 232, 240, 0.6) !important;">
+            <div class="mt-4 pt-3 border-top" style="border-color: #e2e8f0 !important;">
                 <div class="elms-download-card d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         <div class="fw-bold fs-6 d-flex align-items-center gap-2" style="color: inherit;">
