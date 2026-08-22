@@ -456,14 +456,26 @@ class LicenseService
         }
 
         // Status checks.
+        if ($license['status'] === 'expired') {
+            return $this->fail('License Expired');
+        }
         if ($license['status'] === 'suspended') {
             return $this->fail('License Suspended');
         }
         if ($license['status'] === 'terminated') {
             return $this->fail('License Terminated');
         }
+        if ($license['status'] === 'cancelled' || $license['status'] === 'canceled') {
+            return $this->fail('License Cancelled');
+        }
+        if ($license['status'] === 'pending') {
+            return $this->fail('License Pending Approval');
+        }
+        if ($license['status'] !== 'active') {
+            return $this->fail('License is ' . ucfirst($license['status']));
+        }
 
-        // Expiry check.
+        // Expiry date check (auto-expire if overdue).
         if (!empty($license['expiry_date'])) {
             $expiryTs = strtotime($license['expiry_date'] . ' 23:59:59');
             if ($expiryTs !== false && $expiryTs < time()) {
