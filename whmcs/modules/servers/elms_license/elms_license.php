@@ -32,6 +32,7 @@ use WHMCS\Database\Capsule;
  */
 function elms_license_MetaData()
 {
+    elms_ensure_software_license_email_template();
     return [
         'DisplayName'       => 'ELMS License Server',
         'APIVersion'        => '1.1',
@@ -50,6 +51,7 @@ function elms_license_MetaData()
  */
 function elms_license_ConfigOptions(array $params = [])
 {
+    elms_ensure_software_license_email_template();
     $creds = elms_server_resolve_credentials($params);
     $productOptions = ['0' => 'Auto-Match by WHMCS Product Name'];
 
@@ -730,3 +732,50 @@ function elms_server_api_call(string $baseUrl, string $apiKey, string $apiSecret
     $decoded = json_decode($resp, true);
     return is_array($decoded) ? $decoded : ['status' => false, 'message' => 'Invalid server response'];
 }
+
+if (!function_exists('elms_ensure_software_license_email_template')) {
+    function elms_ensure_software_license_email_template()
+    {
+        try {
+            $exists = Capsule::table('tblemailtemplates')
+                ->where('type', 'product')
+                ->where('name', 'Software License Welcome Email')
+                ->exists();
+
+            if (!$exists) {
+                $htmlMsg = '<p>Dear {$client_name},</p>' . "\n"
+                    . '<p>Thank you for your order! Your software license is now active and ready for use.</p>' . "\n"
+                    . '<div style="margin: 20px 0; padding: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-family: sans-serif;">' . "\n"
+                    . '  <h3 style="margin-top: 0; color: #1e293b; font-size: 18px;">License Details</h3>' . "\n"
+                    . '  <table style="width: 100%; border-collapse: collapse;">' . "\n"
+                    . '    <tr><td style="padding: 8px 0; color: #64748b; width: 140px;"><strong>Product:</strong></td><td style="padding: 8px 0; color: #0f172a;"><strong>{$service_product_name}</strong></td></tr>' . "\n"
+                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>License Key:</strong></td><td style="padding: 8px 0;"><span style="display:inline-block; font-family: monospace; font-size: 16px; font-weight: bold; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; border: 1px solid #bae6fd;">{$service_license_key}</span></td></tr>' . "\n"
+                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Registered Domain:</strong></td><td style="padding: 8px 0; color: #0f172a;">{$service_domain}</td></tr>' . "\n"
+                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Expiry / Due Date:</strong></td><td style="padding: 8px 0; color: #0f172a;">{$service_next_due_date}</td></tr>' . "\n"
+                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Status:</strong></td><td style="padding: 8px 0; color: #16a34a; font-weight: bold;">Active</td></tr>' . "\n"
+                    . '  </table>' . "\n"
+                    . '</div>' . "\n"
+                    . '<p>You can view and manage your license anytime from your client portal:</p>' . "\n"
+                    . '<p><a href="{$service_link}" style="display: inline-block; background: #0284c7; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;">View License in Client Area</a></p>' . "\n"
+                    . '<p>If you have any questions or require assistance, please feel free to open a support ticket.</p>' . "\n"
+                    . '<p>Best regards,<br>{$company_name}</p>';
+
+                Capsule::table('tblemailtemplates')->insert([
+                    'type'             => 'product',
+                    'name'             => 'Software License Welcome Email',
+                    'subject'          => 'Your Software License Details - {$service_product_name}',
+                    'message'          => $htmlMsg,
+                    'fromname'         => '',
+                    'fromemail'        => '',
+                    'disabled'         => 0,
+                    'custom'           => 1,
+                    'language'         => '',
+                    'copyto'           => '',
+                    'blindcopyto'      => '',
+                    'plaintext'        => 0,
+                ]);
+            }
+        } catch (\Throwable $e) {}
+    }
+}
+
