@@ -19,6 +19,7 @@ class DashboardController extends Controller
     public function index(Request $request): void
     {
         $licenses = new License();
+        $licenses->expireOverdue();
         $apiLogs  = new ApiLog();
 
         $counts = $licenses->statusCounts();

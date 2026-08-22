@@ -31,6 +31,7 @@ class LicenseController extends Controller
 
     public function index(Request $request): void
     {
+        $this->licenses->expireOverdue();
         $page    = max(1, (int) $request->query('page', 1));
         $perPage = 20;
         $offset  = ($page - 1) * $perPage;

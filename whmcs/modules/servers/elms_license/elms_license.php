@@ -180,6 +180,7 @@ function elms_license_CreateAccount(array $params)
         'activation_limit' => $activationLimit,
         'domain_lock'      => $domainLock,
         'ip_lock'          => $ipLock,
+        'reuse_existing'   => 1,
     ];
 
     if ($selectedProduct !== '0' && $selectedProduct !== '') {

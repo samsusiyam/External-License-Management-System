@@ -19,6 +19,53 @@ class License extends Model
     }
 
     /**
+     * Find existing active license for the specified domain & product.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function findActiveByDomainAndProduct(string $domain, int $productId, int $ignoreId = 0): ?array
+    {
+        $domain = trim($domain);
+        if ($domain === '' || $domain === '*') {
+            return null;
+        }
+
+        return $this->db()->fetch(
+            "SELECT * FROM `licenses`
+             WHERE `product_id` = :pid
+               AND `status` = 'active'
+               AND `id` != :ignore_id
+               AND (
+                   LOWER(`domain`) = LOWER(:d1)
+                   OR LOWER(`domain`) = LOWER(:d2)
+                   OR LOWER(`domain`) = LOWER(:d3)
+               )
+             ORDER BY `id` DESC
+             LIMIT 1",
+            [
+                'pid'       => $productId,
+                'ignore_id' => $ignoreId,
+                'd1'        => $domain,
+                'd2'        => 'www.' . preg_replace('/^www\./i', '', $domain),
+                'd3'        => preg_replace('/^www\./i', '', $domain),
+            ]
+        );
+    }
+
+    /**
+     * Find license by WHMCS Service ID.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function findByWhmcsService(int $serviceId): ?array
+    {
+        if ($serviceId <= 0) {
+            return null;
+        }
+        return $this->findBy(['whmcs_service_id' => $serviceId]);
+    }
+
+    /**
      * Lock a single license row for the duration of the current transaction
      * (SELECT ... FOR UPDATE). Used by LicenseService to serialise
      * activation-limit checks and prevent races under concurrency.

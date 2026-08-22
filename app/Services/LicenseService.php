@@ -43,20 +43,73 @@ class LicenseService
             return $this->fail('Invalid product');
         }
 
+        $domain = self::cleanDomain(!empty($data['domain']) ? (string) $data['domain'] : null);
+        $ip     = !empty($data['ip_address']) ? trim((string) $data['ip_address']) : (!empty($data['ip']) ? trim((string) $data['ip']) : null);
+        $whmcsServiceId = isset($data['whmcs_service_id']) ? (int) $data['whmcs_service_id'] : null;
+
+        // Check if an active license already exists for this domain on this product
+        $allowDuplicate = !empty($data['allow_duplicate']) || !empty($data['force']);
+        $reuseExisting  = !empty($data['reuse_existing']) || ($whmcsServiceId !== null && $whmcsServiceId > 0);
+
+        if (!$allowDuplicate && $domain !== null) {
+            $existing = $this->licenses->findActiveByDomainAndProduct($domain, (int) $product['id']);
+            if ($existing !== null) {
+                if ($reuseExisting) {
+                    // Update / sync existing license if requested
+                    $updateFields = [];
+                    $newExpiry = $this->normalizeDate($data['expiry_date'] ?? ($data['expiry'] ?? null));
+                    if ($newExpiry !== null) {
+                        $updateFields['expiry_date'] = $newExpiry;
+                    }
+                    if ($whmcsServiceId !== null && $whmcsServiceId > 0) {
+                        $updateFields['whmcs_service_id'] = $whmcsServiceId;
+                    }
+                    if (!empty($data['customer_name'])) {
+                        $updateFields['customer_name'] = $data['customer_name'];
+                    }
+                    if (!empty($data['customer_email'])) {
+                        $updateFields['customer_email'] = $data['customer_email'];
+                    }
+                    if (!empty($updateFields)) {
+                        $this->licenses->updateById((int) $existing['id'], $updateFields);
+                        $existing = array_merge($existing, $updateFields);
+                    }
+
+                    AuditService::log('license.reused_existing', 'api', null, 'license', (string) $existing['id'], [
+                        'domain'     => $domain,
+                        'product_id' => $product['id'],
+                    ]);
+
+                    return $this->ok('Existing active license reused', [
+                        'license_key' => $existing['license_key'],
+                        'license_id'  => (int) $existing['id'],
+                        'expiry'      => $existing['expiry_date'],
+                        'product'     => $product['product_key'],
+                        'reused'      => true,
+                    ]);
+                }
+
+                return $this->fail(
+                    'An active license already exists for domain "' . $domain . '" on product "' . $product['product_name'] . '" (Key: ' . $existing['license_key'] . ')',
+                    [
+                        'existing_license_key' => $existing['license_key'],
+                        'existing_license_id'  => (int) $existing['id'],
+                    ]
+                );
+            }
+        }
+
         // Generate a unique license key.
         do {
             $key = KeyGenerator::licenseKey();
         } while ($this->licenses->keyExists($key));
-
-        $domain = !empty($data['domain']) ? trim((string) $data['domain']) : null;
-        $ip     = !empty($data['ip_address']) ? trim((string) $data['ip_address']) : (!empty($data['ip']) ? trim((string) $data['ip']) : null);
 
         $row = [
             'license_key'      => $key,
             'product_id'       => (int) $product['id'],
             'customer_name'    => $data['customer_name'] ?? ($data['customer'] ?? null),
             'customer_email'   => $data['customer_email'] ?? null,
-            'whmcs_service_id' => isset($data['whmcs_service_id']) ? (int) $data['whmcs_service_id'] : null,
+            'whmcs_service_id' => $whmcsServiceId,
             'domain'           => $domain,
             'ip_address'       => $ip,
             'activation_limit' => isset($data['activation_limit']) ? max(1, (int) $data['activation_limit']) : 1,
@@ -103,8 +156,18 @@ class LicenseService
             return $this->fail('Invalid product');
         }
 
-        $domain = array_key_exists('domain', $data) ? ($data['domain'] !== '' ? trim((string) $data['domain']) : null) : $license['domain'];
+        $domain = array_key_exists('domain', $data) ? self::cleanDomain((string) $data['domain']) : $license['domain'];
         $ip = array_key_exists('ip_address', $data) ? ($data['ip_address'] !== '' ? trim((string) $data['ip_address']) : null) : $license['ip_address'];
+        $status = in_array($data['status'] ?? '', ['active', 'suspended', 'expired', 'terminated'], true) ? $data['status'] : $license['status'];
+
+        if ($status === 'active' && $domain !== null && empty($data['allow_duplicate']) && empty($data['force'])) {
+            $existing = $this->licenses->findActiveByDomainAndProduct($domain, $productId, $id);
+            if ($existing !== null) {
+                return $this->fail(
+                    'Another active license already exists for domain "' . $domain . '" on product "' . $product['product_name'] . '" (Key: ' . $existing['license_key'] . ')'
+                );
+            }
+        }
 
         $fields = [
             'product_id'       => $productId,
@@ -116,7 +179,7 @@ class LicenseService
             'domain_lock'      => isset($data['domain_lock']) ? (!empty($data['domain_lock']) ? 1 : 0) : 0,
             'ip_lock'          => isset($data['ip_lock']) ? (!empty($data['ip_lock']) ? 1 : 0) : 0,
             'expiry_date'      => array_key_exists('expiry_date', $data) ? $this->normalizeDate($data['expiry_date']) : $license['expiry_date'],
-            'status'           => in_array($data['status'] ?? '', ['active', 'suspended', 'expired', 'terminated'], true) ? $data['status'] : $license['status'],
+            'status'           => $status,
             'notes'            => $data['notes'] ?? $license['notes'],
         ];
 
@@ -418,15 +481,28 @@ class LicenseService
         return $this->ok('License Valid', ['license' => $license]);
     }
 
+    public static function cleanDomain(?string $domain): ?string
+    {
+        if ($domain === null) {
+            return null;
+        }
+        $d = strtolower(trim($domain));
+        if ($d === '' || $d === '*') {
+            return null;
+        }
+        $d = preg_replace('#^https?://#i', '', $d) ?? $d;
+        $d = explode('/', $d)[0];
+        $d = explode(':', $d)[0]; // strip port
+        $d = preg_replace('/^www\./i', '', $d) ?? $d;
+        $d = trim($d);
+        return $d !== '' ? $d : null;
+    }
+
     private function domainMatches(string $bound, string $given): bool
     {
-        $normalize = static function (string $d): string {
-            $d = strtolower(trim($d));
-            $d = preg_replace('#^https?://#', '', $d) ?? $d;
-            $d = explode('/', $d)[0];
-            return preg_replace('/^www\./', '', $d) ?? $d;
-        };
-        return $normalize($bound) === $normalize($given);
+        $c1 = self::cleanDomain($bound);
+        $c2 = self::cleanDomain($given);
+        return $c1 !== null && $c2 !== null && $c1 === $c2;
     }
 
     private function normalizeDate(?string $date): ?string
