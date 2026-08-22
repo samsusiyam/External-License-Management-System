@@ -183,6 +183,8 @@ class ElmsLicense
                 CURLOPT_POSTFIELDS      => $body,
                 CURLOPT_RETURNTRANSFER  => true,
                 CURLOPT_TIMEOUT         => 15,
+                CURLOPT_FOLLOWLOCATION  => true,
+                CURLOPT_USERAGENT       => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-Client/2.0',
                 CURLOPT_HTTPHEADER      => $headers,
                 CURLOPT_SSL_VERIFYPEER  => true,
                 CURLOPT_SSL_VERIFYHOST  => 2,

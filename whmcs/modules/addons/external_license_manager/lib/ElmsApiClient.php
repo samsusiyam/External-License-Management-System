@@ -161,8 +161,10 @@ class ElmsApiClient
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 15,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-WHMCS-Client/2.0',
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'X-Api-Key: ' . $this->apiKey,

@@ -173,6 +173,8 @@ use App\Core\View;
                     <pre class="bg-light p-2 rounded small text-dark font-monospace mb-0" id="reqPreview" style="max-height: 140px; overflow: auto;">{}</pre>
                 </div>
 
+                <div id="cfWarning" class="alert alert-warning py-2 px-3 small d-none mb-2"></div>
+
                 <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span class="small fw-semibold text-muted">Response Body (JSON)</span>
@@ -315,6 +317,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span class="badge bg-dark">${data.duration_ms} ms</span>
                 ${data.server_sig_valid === true ? '<span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> Signed</span>' : ''}
             `;
+
+            const cfWarn = document.getElementById('cfWarning');
+            if (data.cloudflare_blocked && data.cloudflare_notice) {
+                cfWarn.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> ' + data.cloudflare_notice;
+                cfWarn.classList.remove('d-none');
+            } else {
+                cfWarn.classList.add('d-none');
+            }
 
             document.getElementById('respBody').textContent = JSON.stringify(data.response_body, null, 2);
             document.getElementById('metaUrl').textContent = 'URL: ' + data.target_url;
