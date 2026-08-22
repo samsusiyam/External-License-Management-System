@@ -7,16 +7,8 @@
  * or via the Addon Module. In your products, simply select "ELMS License Server" and choose
  * your product from the dynamic dropdown!
  *
- * Features:
- * - One-time global API connection
- * - Dynamic product selection dropdown
- * - Automatic domain extraction from Custom Fields or WHMCS Domain input
- * - Automatic IP extraction from Custom Fields (only locks IP if provided)
- * - Real-time Expiry Date synchronization
- * - Clean UI without raw hosting credentials (username/password)
- *
  * @package    ELMS
- * @version    2.2.0
+ * @version    2.3.0
  */
 
 if (!defined('WHMCS')) {
@@ -156,7 +148,7 @@ function elms_license_CreateAccount(array $params)
         return 'ELMS Error: License Server URL is not configured.';
     }
 
-    $serviceId = (int) $params['serviceid'];
+    $serviceId = (int) ($params['serviceid'] ?? ($params['id'] ?? 0));
     
     // Normalize Expiry Date (YYYY-MM-DD or null for Lifetime)
     $rawExpiry = $params['nextduedate'] ?? ($params['model']->nextduedate ?? null);
@@ -206,12 +198,12 @@ function elms_license_CreateAccount(array $params)
         $licKey  = (string) $res['data']['license_key'];
         $prodKey = (string) ($res['data']['product'] ?? '');
 
-        // Clear username & password in tblhosting so hosting sidebar hooks don't trigger
+        // Save encrypted license key in password (username remains empty so hosting sidebar doesn't trigger)
         Capsule::table('tblhosting')
             ->where('id', $serviceId)
             ->update([
                 'username' => '',
-                'password' => '',
+                'password' => encrypt($licKey),
                 'domain'   => $domain ?: ($params['domain'] ?? ''),
             ]);
 
@@ -476,7 +468,7 @@ function elms_license_ClientArea(array $params)
 }
 
 // ---------------------------------------------------------------------------
-// Smart Helpers: Date Normalization, Credentials & Custom Field Resolvers
+// Smart Helpers: Date Normalization, Credentials & Multi-Tier Key Resolvers
 // ---------------------------------------------------------------------------
 
 /**
@@ -518,7 +510,7 @@ function elms_server_resolve_credentials(array $params = []): array
         ];
     }
 
-    // 3. Check WHMCS Addon Module settings (tbladdonmodules)
+    // 2. Check WHMCS Addon Module settings (tbladdonmodules)
     try {
         $addonSettings = Capsule::table('tbladdonmodules')
             ->where('module', 'external_license_manager')
@@ -527,14 +519,14 @@ function elms_server_resolve_credentials(array $params = []): array
 
         if (!empty($s['server_url'])) {
             return [
-                'server_url' => $url ?: rtrim((string) $s['server_url'], '/'),
-                'api_key'    => $key ?: (string) ($s['api_key'] ?? ''),
-                'api_secret' => $secret ?: (string) ($s['api_secret'] ?? ''),
+                'server_url' => rtrim((string) $s['server_url'], '/'),
+                'api_key'    => (string) ($s['api_key'] ?? ''),
+                'api_secret' => (string) ($s['api_secret'] ?? ''),
             ];
         }
     } catch (\Throwable $e) {}
 
-    // 4. Check tblservers table for type = 'elms_license'
+    // 3. Check tblservers table for type = 'elms_license'
     try {
         $srv = Capsule::table('tblservers')->where('type', 'elms_license')->where('disabled', 0)->first();
         if ($srv) {
@@ -542,14 +534,14 @@ function elms_server_resolve_credentials(array $params = []): array
             $host = preg_replace('#^https?://#', '', $srv->hostname);
             $sUrl = $scheme . '://' . rtrim($host, '/');
             return [
-                'server_url' => $url ?: $sUrl,
-                'api_key'    => $key ?: (string) $srv->username,
-                'api_secret' => $secret ?: (string) decrypt($srv->password),
+                'server_url' => $sUrl,
+                'api_key'    => (string) $srv->username,
+                'api_secret' => (string) decrypt($srv->password),
             ];
         }
     } catch (\Throwable $e) {}
 
-    return ['server_url' => $url, 'api_key' => $key, 'api_secret' => $secret];
+    return ['server_url' => '', 'api_key' => '', 'api_secret' => ''];
 }
 
 /**
@@ -600,9 +592,12 @@ function elms_clean_domain(string $domain): string
     return preg_replace('/^www\./', '', $d) ?? $d;
 }
 
+/**
+ * Universal Multi-Tier License Key Fetcher.
+ */
 function elms_server_get_license_key(array $params): string
 {
-    $serviceId = (int) ($params['serviceid'] ?? ($params['id'] ?? 0));
+    $serviceId = (int) ($params['serviceid'] ?? ($params['id'] ?? ($_GET['id'] ?? ($_POST['id'] ?? 0))));
     
     // 1. Check mod_elms_licenses table
     if ($serviceId > 0) {
@@ -614,7 +609,25 @@ function elms_server_get_license_key(array $params): string
         } catch (\Throwable $e) {}
     }
 
-    // 2. Check Custom Fields
+    // 2. Check Custom Fields in DB
+    if ($serviceId > 0) {
+        try {
+            $cf = Capsule::table('tblcustomfields')
+                ->join('tblcustomfieldsvalues', 'tblcustomfields.id', '=', 'tblcustomfieldsvalues.fieldid')
+                ->where('tblcustomfieldsvalues.relid', $serviceId)
+                ->where(function ($q) {
+                    $q->where('tblcustomfields.fieldname', 'LIKE', '%license%')
+                      ->orWhere('tblcustomfields.fieldname', 'LIKE', '%License%')
+                      ->orWhere('tblcustomfields.fieldname', 'LIKE', '%Key%');
+                })
+                ->value('tblcustomfieldsvalues.value');
+            if (!empty($cf)) {
+                return trim((string) $cf);
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    // 3. Check $params['customfields']
     $customFields = $params['customfields'] ?? [];
     foreach ($customFields as $k => $v) {
         if (stripos((string) $k, 'license') !== false && !empty($v)) {
@@ -622,7 +635,25 @@ function elms_server_get_license_key(array $params): string
         }
     }
 
-    // 3. Fallback to password/username for legacy records
+    // 4. Check tblhosting table in DB (password or username)
+    if ($serviceId > 0) {
+        try {
+            $hostRow = Capsule::table('tblhosting')->where('id', $serviceId)->first();
+            if ($hostRow) {
+                if (!empty($hostRow->password)) {
+                    $dec = decrypt($hostRow->password);
+                    if (!empty($dec)) {
+                        return trim((string) $dec);
+                    }
+                }
+                if (!empty($hostRow->username)) {
+                    return trim((string) $hostRow->username);
+                }
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    // 5. Fallback to $params['password'] / $params['username']
     if (!empty($params['password'])) {
         $decrypted = decrypt($params['password']);
         if (!empty($decrypted)) {
@@ -678,7 +709,7 @@ function elms_server_api_call(string $baseUrl, string $apiKey, string $apiSecret
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => 0,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-WHMCS-Provisioner/2.2',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ELMS-WHMCS-Provisioner/2.3',
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
             'X-Api-Key: ' . $apiKey,
@@ -718,24 +749,24 @@ if (!function_exists('elms_ensure_software_license_email_template')) {
                 ->where('name', 'Software License Welcome Email')
                 ->exists();
 
-            if (!$exists) {
-                $htmlMsg = '<p>Dear {$client_name},</p>' . "\n"
-                    . '<p>Thank you for your order! Your software license is now active and ready for use.</p>' . "\n"
-                    . '<div style="margin: 20px 0; padding: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-family: sans-serif;">' . "\n"
-                    . '  <h3 style="margin-top: 0; color: #1e293b; font-size: 18px;">License Details</h3>' . "\n"
-                    . '  <table style="width: 100%; border-collapse: collapse;">' . "\n"
-                    . '    <tr><td style="padding: 8px 0; color: #64748b; width: 140px;"><strong>Product:</strong></td><td style="padding: 8px 0; color: #0f172a;"><strong>{$service_product_name}</strong></td></tr>' . "\n"
-                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>License Key:</strong></td><td style="padding: 8px 0;"><span style="display:inline-block; font-family: monospace; font-size: 16px; font-weight: bold; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; border: 1px solid #bae6fd;">{$service_license_key}</span></td></tr>' . "\n"
-                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Registered Domain:</strong></td><td style="padding: 8px 0; color: #0f172a;">{$service_domain}</td></tr>' . "\n"
-                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Expiry / Due Date:</strong></td><td style="padding: 8px 0; color: #0f172a;">{$service_next_due_date}</td></tr>' . "\n"
-                    . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Status:</strong></td><td style="padding: 8px 0; color: #16a34a; font-weight: bold;">Active</td></tr>' . "\n"
-                    . '  </table>' . "\n"
-                    . '</div>' . "\n"
-                    . '<p>You can view and manage your license anytime from your client portal:</p>' . "\n"
-                    . '<p><a href="{$service_link}" style="display: inline-block; background: #0284c7; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;">View License in Client Area</a></p>' . "\n"
-                    . '<p>If you have any questions or require assistance, please feel free to open a support ticket.</p>' . "\n"
-                    . '<p>Best regards,<br>{$company_name}</p>';
+            $htmlMsg = '<p>Dear {$client_name},</p>' . "\n"
+                . '<p>Thank you for your order! Your software license is now active and ready for use.</p>' . "\n"
+                . '<div style="margin: 20px 0; padding: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-family: sans-serif;">' . "\n"
+                . '  <h3 style="margin-top: 0; color: #1e293b; font-size: 18px;">License Details</h3>' . "\n"
+                . '  <table style="width: 100%; border-collapse: collapse;">' . "\n"
+                . '    <tr><td style="padding: 8px 0; color: #64748b; width: 140px;"><strong>Product:</strong></td><td style="padding: 8px 0; color: #0f172a;"><strong>{$service_product_name}</strong></td></tr>' . "\n"
+                . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>License Key:</strong></td><td style="padding: 8px 0;"><span style="display:inline-block; font-family: monospace; font-size: 16px; font-weight: bold; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; border: 1px solid #bae6fd;">{$service_license_key|default:$service_password|default:$license_key}</span></td></tr>' . "\n"
+                . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Registered Domain:</strong></td><td style="padding: 8px 0; color: #0f172a;">{$service_domain}</td></tr>' . "\n"
+                . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Expiry / Due Date:</strong></td><td style="padding: 8px 0; color: #0f172a;">{$service_next_due_date}</td></tr>' . "\n"
+                . '    <tr><td style="padding: 8px 0; color: #64748b;"><strong>Status:</strong></td><td style="padding: 8px 0; color: #16a34a; font-weight: bold;">Active</td></tr>' . "\n"
+                . '  </table>' . "\n"
+                . '</div>' . "\n"
+                . '<p>You can view and manage your license anytime from your client portal:</p>' . "\n"
+                . '<p><a href="{$service_link}" style="display: inline-block; background: #0284c7; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;">View License in Client Area</a></p>' . "\n"
+                . '<p>If you have any questions or require assistance, please feel free to open a support ticket.</p>' . "\n"
+                . '<p>Best regards,<br>{$company_name}</p>';
 
+            if (!$exists) {
                 Capsule::table('tblemailtemplates')->insert([
                     'type'             => 'product',
                     'name'             => 'Software License Welcome Email',
@@ -750,8 +781,12 @@ if (!function_exists('elms_ensure_software_license_email_template')) {
                     'blindcopyto'      => '',
                     'plaintext'        => 0,
                 ]);
+            } else {
+                Capsule::table('tblemailtemplates')
+                    ->where('type', 'product')
+                    ->where('name', 'Software License Welcome Email')
+                    ->update(['message' => $htmlMsg]);
             }
         } catch (\Throwable $e) {}
     }
 }
-
