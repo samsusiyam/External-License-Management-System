@@ -9,12 +9,16 @@
             {/if}
         </div>
         <div>
-            {if $service_status eq 'Active'}
-                <span class="badge bg-success" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;">Active</span>
-            {elseif $service_status eq 'Suspended'}
-                <span class="badge bg-warning text-dark" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;">Suspended</span>
-            {elseif $service_status eq 'Terminated'}
-                <span class="badge bg-danger" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;">Terminated</span>
+            {if $service_status|lower eq 'active'}
+                <span class="badge bg-success" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;"><i class="fas fa-check-circle me-1"></i> Active</span>
+            {elseif $service_status|lower eq 'suspended'}
+                <span class="badge bg-warning text-dark" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;"><i class="fas fa-pause-circle me-1"></i> Suspended</span>
+            {elseif $service_status|lower eq 'expired'}
+                <span class="badge" style="background-color: #ea580c !important; color: #ffffff !important; font-size: 13px; padding: 6px 14px; border-radius: 20px;"><i class="fas fa-clock me-1"></i> Expired</span>
+            {elseif $service_status|lower eq 'terminated'}
+                <span class="badge bg-danger" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;"><i class="fas fa-times-circle me-1"></i> Terminated</span>
+            {elseif $service_status|lower eq 'pending'}
+                <span class="badge bg-secondary" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;"><i class="fas fa-hourglass-half me-1"></i> Pending</span>
             {else}
                 <span class="badge bg-secondary" style="font-size: 13px; padding: 6px 14px; border-radius: 20px;">{$service_status}</span>
             {/if}
@@ -40,6 +44,26 @@
 
         <!-- License Properties Grid -->
         <div class="row g-3">
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="text-muted small">License Status</div>
+                    <div class="fw-bold fs-6 mt-1">
+                        {if $service_status|lower eq 'active'}
+                            <span class="text-success"><i class="fas fa-check-circle me-1"></i> Active</span>
+                        {elseif $service_status|lower eq 'suspended'}
+                            <span class="text-warning"><i class="fas fa-pause-circle me-1"></i> Suspended</span>
+                        {elseif $service_status|lower eq 'expired'}
+                            <span style="color: #ea580c !important;"><i class="fas fa-clock me-1"></i> Expired</span>
+                        {elseif $service_status|lower eq 'terminated'}
+                            <span class="text-danger"><i class="fas fa-times-circle me-1"></i> Terminated</span>
+                        {elseif $service_status|lower eq 'pending'}
+                            <span class="text-muted"><i class="fas fa-hourglass-half me-1"></i> Pending Activation</span>
+                        {else}
+                            <span class="text-primary"><i class="fas fa-info-circle me-1"></i> {$service_status}</span>
+                        {/if}
+                    </div>
+                </div>
+            </div>
             <div class="col-md-6">
                 <div class="border rounded p-3 h-100">
                     <div class="text-muted small">Registered Domain</div>

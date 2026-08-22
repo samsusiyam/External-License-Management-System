@@ -417,15 +417,65 @@ function elms_license_AdminServicesTabFields(array $params)
     $licKey = elms_server_get_license_key($params);
     $domain = elms_extract_domain($params);
     $ip     = elms_extract_ip($params);
+    $status = $params['status'] ?? 'Active';
+    $expiry = elms_format_whmcs_date($params['nextduedate'] ?? ($params['model']->nextduedate ?? null)) ?: 'Lifetime / Perpetual';
+    $activations = '';
+
+    $serviceId = (int) ($params['serviceid'] ?? ($params['id'] ?? ($_GET['id'] ?? ($_POST['id'] ?? 0))));
+    if ($serviceId > 0) {
+        try {
+            $row = Capsule::table('mod_elms_licenses')->where('service_id', $serviceId)->first();
+            if ($row && !empty($row->status)) {
+                $status = ucfirst((string) $row->status);
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    $creds = elms_server_resolve_credentials($params);
+    if (!empty($licKey) && !empty($creds['server_url'])) {
+        try {
+            $res = elms_server_api_call($creds['server_url'], $creds['api_key'], $creds['api_secret'], '/api/license/verify', [
+                'license_key' => $licKey,
+                'domain'      => $domain ?: null,
+            ]);
+            if (!empty($res['data'])) {
+                if (!empty($res['data']['status'])) {
+                    $status = ucfirst((string) $res['data']['status']);
+                }
+                if (!empty($res['data']['expiry'])) {
+                    $expiry = $res['data']['expiry'];
+                }
+                if (isset($res['data']['activation_count']) && isset($res['data']['activation_limit'])) {
+                    $activations = $res['data']['activation_count'] . ' / ' . $res['data']['activation_limit'];
+                }
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    $badgeColor = match (strtolower((string) $status)) {
+        'active'     => 'background:#16a34a; color:#ffffff;',
+        'suspended'  => 'background:#eab308; color:#000000;',
+        'expired'    => 'background:#ea580c; color:#ffffff;',
+        'terminated' => 'background:#dc2626; color:#ffffff;',
+        'pending'    => 'background:#64748b; color:#ffffff;',
+        default      => 'background:#0284c7; color:#ffffff;',
+    };
+
+    $statusBadge = '<span style="display:inline-block; font-size:12px; font-weight:bold; text-transform:uppercase; padding:3px 10px; border-radius:12px; letter-spacing:0.5px; ' . $badgeColor . '">' . htmlspecialchars($status) . '</span>';
 
     $fields = [
-        'License Key' => '<strong style="font-family:monospace; font-size:15px; color:#0f172a; background:#f8fafc; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; letter-spacing:0.5px;">' . htmlspecialchars($licKey ?: 'Not Generated Yet') . '</strong>',
-        'Bound Domain' => htmlspecialchars($domain ?: 'Any Domain'),
+        'License Key'    => '<strong style="font-family:monospace; font-size:15px; color:#0f172a; background:#f8fafc; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; letter-spacing:0.5px;">' . htmlspecialchars($licKey ?: 'Not Generated Yet') . '</strong>',
+        'License Status' => $statusBadge,
+        'Bound Domain'   => htmlspecialchars($domain ?: 'Any Domain (Unrestricted)'),
     ];
 
     if (!empty($ip)) {
         $fields['Bound IP Address'] = htmlspecialchars($ip);
     }
+    if (!empty($activations)) {
+        $fields['Activations (Used / Limit)'] = htmlspecialchars($activations);
+    }
+    $fields['License Expiry'] = htmlspecialchars($expiry);
 
     return $fields;
 }
