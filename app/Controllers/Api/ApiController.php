@@ -79,6 +79,8 @@ abstract class ApiController
                 'duration_ms'   => (int) ((microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true))) * 1000),
                 'created_at'    => date('Y-m-d H:i:s'),
             ]);
+
+            \App\Services\SettingService::autoPruneIfNeeded();
         } catch (\Throwable $e) {
             error_log('[ELMS api-log] ' . $e->getMessage());
         }

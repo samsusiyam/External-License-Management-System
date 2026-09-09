@@ -85,8 +85,16 @@ $router->post('/admin/apikeys/{id}/activate', 'App\Controllers\Admin\ApiKeyContr
 $router->post('/admin/apikeys/{id}/delete',   'App\Controllers\Admin\ApiKeyController@delete', $auth);
 
 // Logs
-$router->get('/admin/logs/api',   'App\Controllers\Admin\LogController@apiLogs', $auth);
-$router->get('/admin/logs/audit', 'App\Controllers\Admin\LogController@auditLogs', $auth);
+$router->get('/admin/logs/api',                'App\Controllers\Admin\LogController@apiLogs', $auth);
+$router->post('/admin/logs/api/delete',        'App\Controllers\Admin\LogController@bulkDeleteApiLogs', $auth);
+$router->post('/admin/logs/api/purge',         'App\Controllers\Admin\LogController@purgeApiLogs', $auth);
+$router->post('/admin/logs/api/settings',      'App\Controllers\Admin\LogController@saveApiLogSettings', $auth);
+$router->post('/admin/logs/api/{id}/delete',   'App\Controllers\Admin\LogController@deleteApiLog', $auth);
+
+$router->get('/admin/logs/audit',              'App\Controllers\Admin\LogController@auditLogs', $auth);
+$router->post('/admin/logs/audit/delete',      'App\Controllers\Admin\LogController@bulkDeleteAuditLogs', $auth);
+$router->post('/admin/logs/audit/purge',       'App\Controllers\Admin\LogController@purgeAuditLogs', $auth);
+$router->post('/admin/logs/audit/{id}/delete', 'App\Controllers\Admin\LogController@deleteAuditLog', $auth);
 
 // Tester & Simulator
 $router->get('/admin/tester',     'App\Controllers\Admin\TesterController@index', $auth);
