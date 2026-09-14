@@ -24,11 +24,12 @@ WHMCS / Software  →  ELMS REST API  →  License Database
 - WHMCS addon module + lifecycle hooks
 - PHP SDK, WordPress plugin, and Laravel package
 - Full audit + API request logging
-- CLI installer and daily database backup script
+- Interactive Web Installer Wizard (`/install`) + CLI installer script
+- Daily database backup script
 
 ## Requirements
 
-- PHP 8.1+ (developed on 8.2) with PDO, cURL, OpenSSL
+- PHP 8.1+ (developed on 8.2) with PDO, PDO MySQL, cURL, OpenSSL, Mbstring
 - MySQL 5.7+ / MariaDB 10.3+
 - Apache with `mod_rewrite` (or PHP built-in server for local dev)
 
@@ -42,19 +43,32 @@ database/      schema.sql + seed.sql
 scripts/       install.php, backup.php, smoke_test.php
 sdk/           php/ wordpress/ laravel/ client SDKs
 whmcs/         WHMCS addon module (modules/addons/external_license_manager)
-storage/       logs + backups
+storage/       logs + backups + lock files
 ```
 
 ## Installation
 
-1. Copy the environment file and edit credentials:
-   ```
+### Option A: Modern Web Installer (Recommended)
+
+1. Upload/clone ELMS to your web hosting or server.
+2. Point your domain or virtual host to the `public/` directory (or access via `http://yourdomain.com/install`).
+3. Open your browser and navigate to `http://yourdomain.com/install`.
+4. Follow the interactive multi-step wizard:
+   - **Step 1:** System compatibility & directory write permissions check.
+   - **Step 2:** Database credentials configuration (with live connection test).
+   - **Step 3:** Administrator account and application setup.
+5. The installer will automatically execute the schema, generate `.env`, create `storage/installed.lock`, and display your initial admin & API credentials!
+
+### Option B: CLI Installer
+
+1. Copy the environment template:
+   ```bash
    cp .env.example .env
    ```
    Set `DB_*`, `APP_URL`, and a strong random `APP_KEY`.
 
-2. Run the installer (creates the DB, loads schema, seeds admin + API key):
-   ```
+2. Run the CLI installer (creates the DB, loads schema, seeds admin + API key):
+   ```bash
    php scripts/install.php --fresh --admin-user=admin --admin-pass="ChangeMe123"
    ```
    The installer prints the admin credentials and a generated API key/secret.

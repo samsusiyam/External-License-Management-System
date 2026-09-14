@@ -16,9 +16,20 @@ use App\Core\Router;
 /** @var Router $router */
 
 // ---------------------------------------------------------------------------
+// Web Installer Routes
+// ---------------------------------------------------------------------------
+$router->get('/install',          'App\Controllers\InstallController@index');
+$router->post('/install/test-db', 'App\Controllers\InstallController@testDb');
+$router->post('/install/process', 'App\Controllers\InstallController@process');
+$router->get('/install/success',  'App\Controllers\InstallController@success');
+
+// ---------------------------------------------------------------------------
 // Public / redirect
 // ---------------------------------------------------------------------------
 $router->get('/', function (): void {
+    if (!\App\Controllers\InstallController::isInstalled()) {
+        \App\Core\Response::redirect('/install');
+    }
     \App\Core\Response::redirect('/admin');
 });
 

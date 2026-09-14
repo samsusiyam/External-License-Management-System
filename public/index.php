@@ -42,6 +42,14 @@ require ELMS_ROOT . '/config/routes.php';
 
 $request = new Request();
 
+// Auto-redirect to /install if application is not yet installed
+if (!\App\Controllers\InstallController::isInstalled()) {
+    $path = $request->path();
+    if (!str_starts_with($path, '/install') && !$request->isApi() && $path !== '/health') {
+        Response::redirect('/install');
+    }
+}
+
 try {
     $router->dispatch($request);
 } catch (\Throwable $e) {
