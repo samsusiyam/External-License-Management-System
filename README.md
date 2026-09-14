@@ -1,215 +1,271 @@
 # External License Management System (ELMS)
 
-A production-grade, centralized license management platform for WHMCS
-modules, PHP scripts, WordPress plugins, Laravel applications, and other
-commercial software. Licenses are issued, verified, activated, locked, and
-managed from a single license server exposing a signed REST API plus a
-Bootstrap 5 admin panel.
+[![PHP Version](https://img.shields.io/badge/PHP-8.1%2B-blue.svg)](https://php.net)
+[![MySQL](https://img.shields.io/badge/MySQL-5.7%2B%20%2F%20MariaDB-orange.svg)](https://mysql.com)
+[![Security](https://img.shields.io/badge/API%20Auth-HMAC--SHA256%20Signed-green.svg)](https://github.com/samsusiyam/External-License-Management-System)
+[![WHMCS Ready](https://img.shields.io/badge/WHMCS-Provisioning%20Server%20Module-blueviolet.svg)](https://whmcs.com)
 
-```
-WHMCS / Software  →  ELMS REST API  →  License Database
-                         ↑
-                   Admin Panel (Bootstrap 5)
-```
+A production-grade, centralized software license management platform for **WHMCS Provisioning, WordPress plugins, PHP scripts, Laravel applications**, and commercial software.
 
-## Features
+Licenses are issued, verified, activated, domain/IP locked, and managed from a high-performance license server featuring a **Bootstrap 5 Admin Panel** and **HMAC-SHA256 Signed REST API**.
 
-- License lifecycle: create, verify, activate, deactivate, renew, reset,
-  suspend, unsuspend, terminate, delete
-- Domain lock, IP lock, and activation limits
-- Automatic expiry handling
-- Signed REST API (API key + HMAC-SHA256 + timestamp replay protection)
-- Per-key / per-IP rate limiting
-- Admin dashboard with license, product, API-key, API-log and audit-log management
-- WHMCS addon module + lifecycle hooks
-- PHP SDK, WordPress plugin, and Laravel package
-- Full audit + API request logging
-- Interactive Web Installer Wizard (`/install`) + CLI installer script
-- Daily database backup script
-
-## Requirements
-
-- PHP 8.1+ (developed on 8.2) with PDO, PDO MySQL, cURL, OpenSSL, Mbstring
-- MySQL 5.7+ / MariaDB 10.3+
-- Apache with `mod_rewrite` (or PHP built-in server for local dev)
-
-## Directory Layout
-
-```
-public/        Web root (front controller + assets)
-app/           Core framework, controllers, models, services, middleware, views
-config/        config.php (reads .env) + routes.php
-database/      schema.sql + seed.sql
-scripts/       install.php, backup.php, smoke_test.php
-sdk/           php/ wordpress/ laravel/ client SDKs
-whmcs/         WHMCS addon module (modules/addons/external_license_manager)
-storage/       logs + backups + lock files
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                     WHMCS / Client Apps                     │
+│  (WHMCS Module, WordPress Plugin, Laravel App, PHP SDK)     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ HMAC-SHA256 Signed REST API
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 ELMS License Server Engine                  │
+│       (/api/license/*, Verification, Domain/IP Binding)     │
+├──────────────────────────────┬──────────────────────────────┤
+│    Modern Web Installer      │   Bootstrap 5 Admin Panel    │
+│          (/install)          │          (/admin)            │
+└──────────────────────────────┴──────────────────────────────┘
 ```
 
-## Installation
+---
 
-### Option A: Modern Web Installer (Recommended)
+## 🚀 Key Features
 
-1. Upload/clone ELMS to your web hosting or server.
-2. Point your domain or virtual host to the `public/` directory (or access via `http://yourdomain.com/install`).
-3. Open your browser and navigate to `http://yourdomain.com/install`.
-4. Follow the interactive multi-step wizard:
-   - **Step 1:** System compatibility & directory write permissions check.
-   - **Step 2:** Database credentials configuration (with live connection test).
-   - **Step 3:** Administrator account and application setup.
-5. The installer will automatically execute the schema, generate `.env`, create `storage/installed.lock`, and display your initial admin & API credentials!
+* **Full License Lifecycle:** Issue, verify, activate, deactivate, renew, reset bindings, suspend, unsuspend, terminate, and delete licenses.
+* **Domain, IP & Activation Limits:** Enforce strict domain name binding, server IP restrictions, and maximum simultaneous activations.
+* **Signed REST API:** All requests and responses are signed with `HMAC-SHA256` and protected with timestamp replay protection (±300s window).
+* **Interactive Web Installer (`/install`):** 3-step browser installation wizard with server requirements check, live database connection testing, automatic schema execution, and secure `.env` generator.
+* **Modern Admin Console:** Fast Bootstrap 5 dashboard with dark/light themes, product manager, API key manager, detailed audit trail, and API request logs.
+* **WHMCS Provisioning Server Module:** Complete cPanel-style server module for WHMCS to automate license creation on order payment, suspension on overdue, unsuspension, termination, and client area management.
+* **Client SDKs Included:** Native SDKs for standalone PHP scripts, WordPress plugins, and Laravel applications.
+* **Automated Daily Backups:** Bundled CLI database backup utility with automatic retention pruning.
 
-### Option B: CLI Installer
+---
+
+## 📋 System Requirements
+
+* **PHP:** 8.1+ (PHP 8.2 & 8.3 fully supported)
+* **PHP Extensions:** `pdo`, `pdo_mysql`, `curl`, `openssl`, `mbstring`, `json`, `filter`
+* **Database:** MySQL 5.7+ or MariaDB 10.3+
+* **Web Server:** Apache (with `mod_rewrite` enabled), Nginx, Litespeed, or cPanel/caching VPS
+
+---
+
+## 📂 Directory Layout
+
+```text
+├── app/                  # Core MVC framework, controllers, models, services, middleware, views
+│   ├── Controllers/      # Admin, API, and Web Installer controllers
+│   ├── Core/             # Config, Router, Request, Response, Database, View engines
+│   └── Views/            # Blade-style PHP views (Dashboard, Licenses, Products, Installer, etc.)
+├── config/               # Application configuration and route definitions
+├── database/             # schema.sql and seed.sql
+├── docs/                 # Detailed architecture and WHMCS integration guides
+├── public/               # Web root (front controller index.php, CSS, JS, assets)
+├── scripts/              # CLI tools: install.php, backup.php, smoke_test.php
+├── sdk/                  # Client SDKs (php/, wordpress/, laravel/)
+├── storage/              # Logs, backups, and installed.lock
+├── tests/                # Automated unit and integration test suite
+└── whmcs/                # WHMCS Provisioning Server Module & Client Area Hooks
+    ├── includes/hooks/   # WHMCS Client Area & theme sync hooks
+    └── modules/servers/  # elms_license Provisioning Server Module
+```
+
+---
+
+## 🛠️ Installation
+
+### Option 1: Modern Web Installer (Recommended)
+
+1. Clone or upload the repository to your server/hosting:
+   ```bash
+   git clone https://github.com/samsusiyam/External-License-Management-System.git
+   ```
+2. Point your web server / domain document root to the `public/` directory.
+3. Open your browser and navigate to:
+   ```text
+   http://your-domain.com/install
+   ```
+4. Follow the interactive 3-step wizard:
+   * **Step 1: System Requirements & Permissions Check** (Verifies PHP extensions and folder permissions).
+   * **Step 2: Database Configuration** (Enter DB host, port, name, user, password and click **Test Connection**).
+   * **Step 3: Administrator & Site Setup** (Set App URL, Admin Name, Username, Email, and Password).
+5. The installer will automatically migrate the database, generate `.env`, lock the installer, and present your generated administrator and API credentials.
+
+---
+
+### Option 2: CLI Installer
 
 1. Copy the environment template:
    ```bash
    cp .env.example .env
    ```
-   Set `DB_*`, `APP_URL`, and a strong random `APP_KEY`.
+   Configure `DB_*`, `APP_URL`, and a secure `APP_KEY` in `.env`.
 
-2. Run the CLI installer (creates the DB, loads schema, seeds admin + API key):
+2. Run the command-line installer:
    ```bash
-   php scripts/install.php --fresh --admin-user=admin --admin-pass="ChangeMe123"
+   php scripts/install.php --fresh --admin-user=admin --admin-pass="YourSecurePassword"
    ```
-   The installer prints the admin credentials and a generated API key/secret.
-   Store them securely.
 
-3. Point your web server's document root at `public/`. For Apache under a
-   subdirectory (e.g. XAMPP `htdocs/license`), the included `.htaccess`
-   files handle rewriting; the app auto-detects its base path.
-
-4. For local development you can use the PHP built-in server:
-   ```
+3. Start local development server (optional):
+   ```bash
    php -S 127.0.0.1:8080 -t public
    ```
-   Then open `http://127.0.0.1:8080/admin`.
+   Admin panel will be accessible at `http://127.0.0.1:8080/admin`.
 
-> Security: change the seeded admin password immediately, restrict access to
-> `.env`, and serve the panel over HTTPS in production.
+---
 
-## REST API
+## ⚡ WHMCS Integration Guide
 
-Base path: `/api`. All endpoints are `POST` and require these headers:
+ELMS includes a complete **Provisioning Server Module** for WHMCS that automates license issuance, renewals, suspensions, terminations, and client area management.
 
-| Header        | Value                                                        |
-|---------------|--------------------------------------------------------------|
-| `X-Api-Key`   | Public API key                                               |
-| `X-Timestamp` | Current unix time (seconds); must be within ±300s            |
-| `X-Signature` | `HMAC_SHA256(timestamp + "." + api_key + "." + sha256(body), secret)` |
+### 1. Upload Module Files to WHMCS
 
-Signature base string:
-```
-{timestamp}.{api_key}.{sha256(raw_json_body)}
+Copy the contents of the `whmcs/` folder into your WHMCS root directory:
+
+```text
+whmcs/modules/servers/elms_license/  -->  <WHMCS_ROOT>/modules/servers/elms_license/
+whmcs/includes/hooks/elms_license.php --> <WHMCS_ROOT>/includes/hooks/elms_license.php
 ```
 
-### Endpoints
+---
 
-| Endpoint                   | Purpose                              |
-|----------------------------|--------------------------------------|
-| `/api/license/create`      | Generate a license                   |
-| `/api/license/verify`      | Verify a license (no activation)     |
-| `/api/license/activate`    | Register an activation               |
-| `/api/license/deactivate`  | Free an activation slot              |
-| `/api/license/renew`       | Extend expiry                        |
-| `/api/license/reset`       | Clear domain/IP/activation bindings  |
-| `/api/license/suspend`     | Set status = suspended               |
-| `/api/license/unsuspend`   | Set status = active                  |
-| `/api/license/terminate`   | Set status = terminated              |
-| `/api/updates/check`       | Latest version / download URL        |
+### 2. Configure the License Server in WHMCS
 
-All responses use the envelope:
-```json
-{ "status": true, "message": "License Valid", "data": { } }
-```
+1. In WHMCS Admin, navigate to **Configuration > System Settings > Servers** (or *Setup > Products/Services > Servers* in older WHMCS).
+2. Click **Add New Server**:
+   * **Name:** `ELMS License Server`
+   * **Hostname / IP Address:** `https://license.yourdomain.com` (Your ELMS URL without trailing slash)
+   * **Server Type / Module:** Select **`ELMS License Server`**
+   * **Username / Access Key:** Enter your ELMS **Public API Key** (`elms_pk_...`)
+   * **Password / Hash:** Enter your ELMS **API Secret Key** (`elms_sk_...`)
+   * **Secure:** Check `Tick to use SSL Mode` if using HTTPS.
+3. Click **Save Changes** & **Test Connection**.
 
-### Verify checks (in order)
+---
 
-1. License exists
-2. Product key matches (if provided)
-3. Not suspended / terminated
-4. Not expired
-5. Domain lock (if enabled)
-6. IP lock (if enabled)
+### 3. Create a License Product in WHMCS
 
-Activation additionally enforces the activation limit.
+1. Go to **System Settings > Products/Services > Products/Services** and create/edit a product.
+2. Under the **Module Settings** tab:
+   * **Module Name:** Select **`ELMS License Server`**
+   * **Server Group:** Select the Server or Group created in Step 2.
+   * **Product Selection:** Select your product from the dynamic dropdown (automatically fetched from your ELMS server) or enter your **Product Key** (e.g. `WHMCS-OTP`).
+   * **Default Status:** `Active`
+   * **Max Allowed Activations:** e.g. `1` (or leave empty for unlimited)
+   * **Enforce Domain Lock:** Yes / No
+   * **Enforce IP Lock:** Yes / No
+3. Set **Automatically setup the product as soon as the first payment is received**.
 
-### Example (curl)
+---
 
-```bash
-TS=$(date +%s)
-BODY='{"license_key":"XXXX-XXXX-XXXX-XXXX","domain":"example.com","product":"WHMCS-OTP"}'
-SIG=$(printf '%s.%s.%s' "$TS" "$API_KEY" "$(printf '%s' "$BODY" | sha256sum | cut -d' ' -f1)" \
-      | openssl dgst -sha256 -hmac "$API_SECRET" | cut -d' ' -f2)
+### 4. Automated WHMCS Lifecycle Actions
 
-curl -X POST https://license.example.com/api/license/verify \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: $API_KEY" \
-  -H "X-Timestamp: $TS" \
-  -H "X-Signature: $SIG" \
-  -d "$BODY"
-```
+Once configured, WHMCS will automatically communicate with ELMS:
 
-You can run the bundled smoke test against a running server:
-```
-php scripts/smoke_test.php <api_key> <api_secret> http://127.0.0.1:8080
-```
+| WHMCS Trigger Event | Action Performed in ELMS |
+| :--- | :--- |
+| **Order Paid / Accepted (`Create`)** | Issues a new unique License Key (`XXXX-XXXX-XXXX-XXXX`), links it to the client domain/service, and sends the delivery email. |
+| **Invoice Overdue / Unpaid (`Suspend`)** | Suspends the license on ELMS; client applications receive `License Suspended`. |
+| **Invoice Paid (`Unsuspend`)** | Reactivates the license automatically. |
+| **Service Cancelled / Refunded (`Terminate`)** | Permanently terminates the license on ELMS. |
+| **Client Area Management** | Clients can view their license key with 1-click copy, see allowed domains/IPs, activation counts, and self-service reset domain bindings. |
 
-## Client SDKs
+---
 
-### PHP
+## 🔒 Signed REST API Reference
+
+Base Endpoint: `/api`  
+All endpoints require `POST` requests with JSON payload and the following authentication headers:
+
+| Header | Description |
+| :--- | :--- |
+| `X-Api-Key` | Your ELMS Public API Key (`elms_pk_...`) |
+| `X-Timestamp` | Current Unix timestamp in seconds (must be within ±300s window) |
+| `X-Signature` | `HMAC_SHA256(timestamp + "." + api_key + "." + sha256(raw_json_body), api_secret)` |
+
+### API Endpoints
+
+| Endpoint | Description |
+| :--- | :--- |
+| `POST /api/license/verify` | Verify license validity without consuming an activation slot. |
+| `POST /api/license/activate` | Activate a license for a specific domain/IP (increments activation count). |
+| `POST /api/license/deactivate` | Deactivate a license and release the activation slot. |
+| `POST /api/license/create` | Issue a new license with custom constraints and expiry date. |
+| `POST /api/license/renew` | Extend license validity / expiry date. |
+| `POST /api/license/reset` | Clear domain, IP, and activation hardware bindings. |
+| `POST /api/license/suspend` | Suspend license status. |
+| `POST /api/license/unsuspend` | Restore suspended license to active status. |
+| `POST /api/license/terminate` | Permanently terminate a license. |
+| `POST /api/updates/check` | Check for software updates and retrieve latest version release info. |
+| `GET /api/products` | Retrieve active products list for WHMCS / external integration dropdowns. |
+
+---
+
+## 💻 Client SDKs
+
+### PHP Applications
 ```php
-require 'sdk/php/license.php';
+require_once 'sdk/php/license.php';
+
 $elms = new ElmsLicense([
-    'server' => 'https://license.example.com',
-    'api_key' => 'elms_pk_...', 'secret' => 'elms_sk_...',
-    'product' => 'WHMCS-OTP',
+    'server'     => 'https://license.yourdomain.com',
+    'api_key'    => 'elms_pk_...',
+    'secret'     => 'elms_sk_...',
+    'product'    => 'YOUR-PRODUCT-KEY',
 ]);
-if ($elms->verify('XXXX-XXXX-XXXX-XXXX', 'example.com')['status']) {
-    // valid
+
+$check = $elms->verify('XXXX-XXXX-XXXX-XXXX', 'clientdomain.com');
+if ($check['status']) {
+    // License is valid!
+} else {
+    die('License Error: ' . $check['message']);
 }
 ```
 
-### WordPress
-Copy `sdk/wordpress/` into `wp-content/plugins/elms-license-client/`, activate,
-and configure under Settings → ELMS License.
+### WordPress Plugins
+Copy `sdk/wordpress/` to `wp-content/plugins/elms-license-client/` and activate it. Configure your server URL and Product Key under **Settings > ELMS License**.
 
-### Laravel
-```
-composer require elms/laravel-license   # from a local/VCS repo
+### Laravel Applications
+```bash
+composer require elms/laravel-license
 php artisan vendor:publish --tag=elms-config
 ```
 ```php
-app('elms.license')->isValid($licenseKey);
+use Elms\License\Facades\License;
+
+if (!License::isValid($licenseKey)) {
+    abort(403, 'Invalid or expired license.');
+}
 ```
 
-## WHMCS Integration
+---
 
-Copy `whmcs/modules/addons/external_license_manager/` into your WHMCS
-`modules/addons/` directory, activate it under Setup → Addon Modules, and
-enter the License Server URL, API key, and secret. Lifecycle hooks:
+## 💾 Automated Database Backups
 
-- `AfterModuleCreate` → create license
-- `AfterModuleSuspend` → suspend
-- `AfterModuleUnsuspend` → unsuspend
-- `AfterModuleTerminate` → terminate
+ELMS includes a secure database backup utility:
 
-## Backups
-
-```
+```bash
 php scripts/backup.php --retain-days=14
 ```
-Schedule daily via cron (Linux) or Task Scheduler (Windows). Dumps are written
-to `storage/backups/` and old dumps are pruned automatically.
 
-## Security Notes
+Add to your server's cron job for automatic daily backups at midnight:
+```cron
+0 0 * * * /usr/bin/php /path/to/license/scripts/backup.php --retain-days=14 >/dev/null 2>&1
+```
+Backups are compressed and stored securely in `storage/backups/`.
 
-- All queries use PDO prepared statements.
-- Admin auth is session-based with CSRF protection and bcrypt password hashing.
-- API auth uses API key + HMAC-SHA256 with a timestamp replay window.
-- Rate limiting is applied per API key and per IP.
-- Security headers and `.htaccess` restrict access to the web root and dotfiles.
-- Never commit your real `.env`; it is gitignored.
+---
 
-## License
+## 🛡️ Security Architecture
 
-Proprietary. All rights reserved.
+* **Database Security:** Strictly uses PDO parameterized prepared statements against SQL injection.
+* **Environment Protection:** `.env` and `storage/installed.lock` are strictly gitignored and protected by `.htaccess`.
+* **HMAC Request Signing:** Prevents request spoofing and man-in-the-middle (MITM) tampering.
+* **Brute-Force & Rate Limiting:** Sliding window rate limiting applied per API key and per IP address.
+* **Bcrypt Password Hashing:** Admin passwords use standard cost-factored bcrypt hashing.
+
+---
+
+## 📄 License & Support
+
+Proprietary Software. Developed for professional software authors and hosting providers.  
+For documentation and support, refer to the [`docs/`](docs/) directory.
