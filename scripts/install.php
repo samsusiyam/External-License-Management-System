@@ -138,4 +138,14 @@ if ($hasAdmin === 0) {
     echo "[skip] admin_users already populated; not re-seeding.\n";
 }
 
+// 6) Create installed.lock
+$lockFile = dirname(__DIR__) . '/storage/installed.lock';
+if (!is_file($lockFile)) {
+    @file_put_contents($lockFile, json_encode([
+        'installed_at' => date('c'),
+        'method'       => 'cli',
+        'version'      => '1.0.0',
+    ], JSON_PRETTY_PRINT));
+}
+
 echo "\n[done] Installation complete. Admin panel: " . Config::get('app.url') . "/admin\n";

@@ -18,7 +18,7 @@ function elms_test(string $name, callable $fn): void
     $GLOBALS['__elms_tests'][$name] = $fn;
 }
 
-foreach (['SignatureServiceTest', 'KeyGeneratorTest', 'ValidatorTest', 'DomainCleanerTest'] as $suite) {
+foreach (['SignatureServiceTest', 'KeyGeneratorTest', 'ValidatorTest', 'DomainCleanerTest', 'InstallControllerTest'] as $suite) {
     require __DIR__ . '/' . $suite . '.php';
 }
 

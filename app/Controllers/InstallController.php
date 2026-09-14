@@ -24,20 +24,7 @@ class InstallController
 
     public static function isInstalled(): bool
     {
-        if (is_file(self::$lockFile)) {
-            return true;
-        }
-
-        // Fallback: If .env exists and has database configured and tables exist
-        $envFile = ELMS_ROOT . DIRECTORY_SEPARATOR . '.env';
-        if (is_file($envFile)) {
-            $dbName = Config::get('db.name');
-            if (!empty($dbName) && $dbName !== 'elms') {
-                return true;
-            }
-        }
-
-        return false;
+        return is_file(self::$lockFile);
     }
 
     public function index(Request $request): void
@@ -82,21 +69,36 @@ class InstallController
         }
 
         try {
-            // First attempt: Connect to MySQL server directly (without selecting DB)
-            $pdo = new PDO("mysql:host={$host};port={$port};charset=utf8mb4", $user, $pass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 5,
-            ]);
+            // Attempt 1: Connect directly to MySQL server
+            try {
+                $pdo = new PDO("mysql:host={$host};port={$port};charset=utf8mb4", $user, $pass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 5,
+                ]);
 
-            // Check if DB exists
-            $stmt = $pdo->prepare('SHOW DATABASES LIKE :dbname');
-            $stmt->execute([':dbname' => $name]);
-            $dbExists = (bool) $stmt->fetchColumn();
+                // Check if DB exists
+                $stmt = $pdo->prepare('SHOW DATABASES LIKE :dbname');
+                $stmt->execute([':dbname' => $name]);
+                $dbExists = (bool) $stmt->fetchColumn();
 
-            Response::success('Database connection successful!', [
-                'database_exists' => $dbExists,
-                'message' => $dbExists ? "Connected to MySQL and database '{$name}' exists." : "Connected to MySQL. Database '{$name}' will be automatically created during installation.",
-            ]);
+                Response::success('Database connection successful!', [
+                    'database_exists' => $dbExists,
+                    'message' => $dbExists
+                        ? "Connected to MySQL and database '{$name}' exists."
+                        : "Connected to MySQL. Database '{$name}' will be automatically created during installation.",
+                ]);
+            } catch (PDOException $e) {
+                // Attempt 2 (cPanel / Restricted MySQL users who can only connect to specific db):
+                $pdo = new PDO("mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4", $user, $pass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 5,
+                ]);
+
+                Response::success('Database connection successful!', [
+                    'database_exists' => true,
+                    'message' => "Connected successfully to existing database '{$name}'.",
+                ]);
+            }
         } catch (PDOException $e) {
             Response::error('Database connection failed: ' . $e->getMessage());
         } catch (Throwable $e) {
@@ -142,15 +144,21 @@ class InstallController
         }
 
         try {
-            // 1. Connect to MySQL server
-            $server = new PDO("mysql:host={$dbHost};port={$dbPort};charset=utf8mb4", $dbUser, $dbPass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            ]);
-            $server->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            // 1. Connect to MySQL server and try creating DB (if permitted)
+            try {
+                $server = new PDO("mysql:host={$dbHost};port={$dbPort};charset=utf8mb4", $dbUser, $dbPass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 5,
+                ]);
+                $server->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            } catch (PDOException) {
+                // In cPanel / restricted environments, user creates the database beforehand
+            }
 
             // 2. Connect to the specific database
             $pdo = new PDO("mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4", $dbUser, $dbPass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 5,
             ]);
 
             // 3. Load and execute database schema
